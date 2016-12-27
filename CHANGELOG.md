@@ -1,5 +1,9 @@
 # Sparkle-DNS Change Log
 
+## v0.0.2 (unreleased)
+
+No changes yet!
+
 ## v0.0.1 (2016-12-26)
 
 This is the first release. It provides minimal support for running a DNS
