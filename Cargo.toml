@@ -1,0 +1,8 @@
+[package]
+name = "sparkle-dns"
+version = "0.0.1-dev"
+authors = ["Craig M. Brandenburg <c.m.brandenburg@gmail.com>"]
+
+[lib]
+name = "sparkle"
+path = "src/lib.rs"
