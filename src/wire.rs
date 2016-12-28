@@ -166,55 +166,79 @@ impl<'a> Iterator for ResourceRecordIter<'a> {
 }
 
 const QR_MASK: u16 = 0b_1000_0000_0000_0000; // 0 for query, 1 for response
-const AA_MASK: u16 = 0b_0000_0100_0000_0000; // authoritative answer
+// const AA_MASK: u16 = 0b_0000_0100_0000_0000; // authoritative answer
 const TC_MASK: u16 = 0b_0000_0010_0000_0000; // truncation
 const RD_MASK: u16 = 0b_0000_0001_0000_0000; // recursion desired?
-const RA_MASK: u16 = 0b_0000_0000_1000_0000; // recursion available?
-const Z_MASK: u16 = 0b_0000_0000_0111_0000; // reserved for future use
+// const RA_MASK: u16 = 0b_0000_0000_1000_0000; // recursion available?
+// const Z_MASK: u16 = 0b_0000_0000_0111_0000; // reserved for future use
 
-const OPCODE_MASK: u16 = 0b_0111_1000_0000_0000;
+// const OPCODE_MASK: u16 = 0b_0111_1000_0000_0000;
 pub mod opcode {
-    pub const QUERY: u16 = 0b_0000_0000_0000_0000; // standard query
-    pub const IQUERY: u16 = 0b_0000_1000_0000_0000; // inverse query
-    pub const STATUS: u16 = 0b_0001_0000_0000_0000; // server status request
+    // pub const QUERY: u16 = 0b_0000_0000_0000_0000; // standard query
+    // pub const IQUERY: u16 = 0b_0000_1000_0000_0000; // inverse query
+    // pub const STATUS: u16 = 0b_0001_0000_0000_0000; // server status request
 }
 
-const RCODE_MASK: u16 = 0b_0000_0000_0000_1111;
+// const RCODE_MASK: u16 = 0b_0000_0000_0000_1111;
 pub mod rcode {
-    pub const NOERROR: u16 = 0b_0000_0000_0000_0000; // no error
-    pub const FORMERR: u16 = 0b_0000_0000_0000_0001; // format error
-    pub const SERVFAIL: u16 = 0b_0000_0000_0000_0010; // server failure
-    pub const NXDOMAIN: u16 = 0b_0000_0000_0000_0011; // name error
-    pub const NOTIMP: u16 = 0b_0000_0000_0000_0100; // not implemented
-    pub const REFUSED: u16 = 0b_0000_0000_0000_0101; // refused
+    // pub const NOERROR: u16 = 0b_0000_0000_0000_0000; // no error
+    // pub const FORMERR: u16 = 0b_0000_0000_0000_0001; // format error
+    // pub const SERVFAIL: u16 = 0b_0000_0000_0000_0010; // server failure
+    // pub const NXDOMAIN: u16 = 0b_0000_0000_0000_0011; // name error
+    // pub const NOTIMP: u16 = 0b_0000_0000_0000_0100; // not implemented
+    // pub const REFUSED: u16 = 0b_0000_0000_0000_0101; // refused
 }
 
 /// Defines marker types—should not be used directly.
 pub mod marker {
     pub trait QueryOrResponse {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Query;
     impl QueryOrResponse for Query {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Response;
     impl QueryOrResponse for Response {}
 
     pub trait EncoderState {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct QuestionSection;
     impl EncoderState for QuestionSection {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct AnswerSection;
     impl EncoderState for AnswerSection {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct AuthoritySection;
     impl EncoderState for AuthoritySection {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct AdditionalSection;
     impl EncoderState for AdditionalSection {}
 
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct Done;
     impl EncoderState for Done {}
+}
+
+/// Specifies an error that occurred while encoding a DNS message.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EncoderError;
+
+impl std::error::Error for EncoderError {
+    fn description(&self) -> &str {
+        "Buffer is too small to contain message--message truncated"
+    }
+}
+
+impl std::fmt::Display for EncoderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let d = (self as &std::error::Error).description();
+        d.fmt(f)
+    }
 }
 
 /// Writes a DNS message to an external buffer.
@@ -224,7 +248,7 @@ pub mod marker {
 /// (truncation) flag and elides questions and/or resource records such that the
 /// DNS message is valid and fits within the buffer.
 ///
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct WireEncoder<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> {
     _phantom: std::marker::PhantomData<(Q, S)>,
     buffer: &'a mut [u8],
@@ -232,20 +256,22 @@ pub struct WireEncoder<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> 
 }
 
 impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q, S> {
-    fn new(buffer: &'a mut [u8]) -> Self {
+    fn new(buffer: &'a mut [u8]) -> Result<Self, EncoderError> {
         const HEADER_LEN: usize = 12;
-        assert!(buffer.len() >= HEADER_LEN); // yep, panic if the buffer is too small
+        if buffer.len() < HEADER_LEN {
+            return Err(EncoderError);
+        }
 
         // Zero-out all bytes in the header.
         for i in 0..HEADER_LEN {
             buffer[i] = 0;
         }
 
-        WireEncoder {
+        Ok(WireEncoder {
             _phantom: std::marker::PhantomData,
             buffer: buffer,
             cursor: HEADER_LEN,
-        }
+        })
     }
 
     unsafe fn read_u16_at_unchecked(&self, index: usize) -> u16 {
@@ -273,10 +299,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         }
     }
 
-    fn encode_octets_at(&mut self, cursor: &mut usize, octets: &[u8]) -> Result<(), ()> {
+    fn encode_octets_at(&mut self, cursor: &mut usize, octets: &[u8]) -> Result<(), EncoderError> {
         if *cursor + octets.len() > self.buffer.len() {
             self.encode_flags(TC_MASK, TC_MASK);
-            Err(())
+            Err(EncoderError)
         } else {
             (&mut self.buffer[*cursor..*cursor + octets.len()]).copy_from_slice(octets);
             *cursor += octets.len();
@@ -284,7 +310,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         }
     }
 
-    fn encode_u8_at(&mut self, cursor: &mut usize, v: u8) -> Result<(), ()> {
+    fn encode_u8_at(&mut self, cursor: &mut usize, v: u8) -> Result<(), EncoderError> {
         self.buffer
             .get_mut(*cursor)
             .and_then(|x| {
@@ -297,10 +323,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
                 None
             })
             .map(|_| ())
-            .ok_or(())
+            .ok_or(EncoderError)
     }
 
-    fn encode_u16_at(&mut self, cursor: &mut usize, v: u16) -> Result<(), ()> {
+    fn encode_u16_at(&mut self, cursor: &mut usize, v: u16) -> Result<(), EncoderError> {
         let mut w = *cursor;
         self.encode_u8_at(&mut w, (v >> 8) as u8)?;
         self.encode_u8_at(&mut w, (v >> 0) as u8)?;
@@ -308,7 +334,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         Ok(())
     }
 
-    fn encode_u32_at(&mut self, cursor: &mut usize, v: u32) -> Result<(), ()> {
+    fn encode_u32_at(&mut self, cursor: &mut usize, v: u32) -> Result<(), EncoderError> {
         let mut w = *cursor;
         self.encode_u16_at(&mut w, (v >> 16) as u16)?;
         self.encode_u16_at(&mut w, (v >> 0) as u16)?;
@@ -316,23 +342,23 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         Ok(())
     }
 
-    fn encode_class_at(&mut self, cursor: &mut usize, class: Class) -> Result<(), ()> {
+    fn encode_class_at(&mut self, cursor: &mut usize, class: Class) -> Result<(), EncoderError> {
         self.encode_u16_at(cursor, class.0)
     }
 
-    fn encode_qclass_at(&mut self, cursor: &mut usize, qclass: QClass) -> Result<(), ()> {
+    fn encode_qclass_at(&mut self, cursor: &mut usize, qclass: QClass) -> Result<(), EncoderError> {
         self.encode_u16_at(cursor, qclass.0)
     }
 
-    fn encode_type_at(&mut self, cursor: &mut usize, type_: Type) -> Result<(), ()> {
+    fn encode_type_at(&mut self, cursor: &mut usize, type_: Type) -> Result<(), EncoderError> {
         self.encode_u16_at(cursor, type_.0)
     }
 
-    fn encode_qtype_at(&mut self, cursor: &mut usize, qtype: QType) -> Result<(), ()> {
+    fn encode_qtype_at(&mut self, cursor: &mut usize, qtype: QType) -> Result<(), EncoderError> {
         self.encode_u16_at(cursor, qtype.0)
     }
 
-    fn encode_name_at<'b, N: Name<'b>>(&mut self, cursor: &mut usize, name: &'b N) -> Result<(), ()> {
+    fn encode_name_at<'b, N: Name<'b>>(&mut self, cursor: &mut usize, name: &'b N) -> Result<(), EncoderError> {
         // TODO: Compress the name, if possible.
         let mut w = *cursor;
         for label in name.labels() {
@@ -345,7 +371,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         Ok(())
     }
 
-    fn encode_question_at<'b, F: Format<'b>>(&mut self, cursor: &mut usize, q: &'b Question<'b, F>) -> Result<(), ()> {
+    fn encode_question_at<'b, F: Format<'b>>(&mut self,
+                                             cursor: &mut usize,
+                                             q: &'b Question<'b, F>)
+                                             -> Result<(), EncoderError> {
         let mut w = *cursor;
         self.encode_name_at(&mut w, q.qname())?;
         self.encode_qtype_at(&mut w, q.qtype())?;
@@ -357,7 +386,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
     fn encode_rdlength_and_rdata_at<'b, F: Format<'b>>(&mut self,
                                                        cursor: &mut usize,
                                                        rdata: &'b RData<'b, F>)
-                                                       -> Result<(), ()> {
+                                                       -> Result<(), EncoderError> {
         let mut w = *cursor + 2; // leave room for RDLENGTH
         match rdata {
             &RData::A { ref address } => self.encode_octets_at(&mut w, &address.octets()[..])?,
@@ -384,7 +413,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
     fn encode_resource_record_at<'b, F: Format<'b>>(&mut self,
                                                     cursor: &mut usize,
                                                     r: &'b ResourceRecord<'b, F>)
-                                                    -> Result<(), ()> {
+                                                    -> Result<(), EncoderError> {
         let mut w = *cursor;
         self.encode_name_at(&mut w, r.name())?;
         self.encode_type_at(&mut w, r.type_())?;
@@ -406,7 +435,7 @@ impl<'a, Q: marker::QueryOrResponse> WireEncoder<'a, Q, marker::QuestionSection>
         }
     }
 
-    pub fn encode_question<'b, F: Format<'b>>(&mut self, q: &'b Question<'b, F>) -> Result<(), ()> {
+    pub fn encode_question<'b, F: Format<'b>>(&mut self, q: &'b Question<'b, F>) -> Result<(), EncoderError> {
         let mut cursor = self.cursor;
         self.encode_question_at(&mut cursor, q)?;
         self.cursor = cursor;
@@ -415,6 +444,15 @@ impl<'a, Q: marker::QueryOrResponse> WireEncoder<'a, Q, marker::QuestionSection>
             self.write_u16_at_unchecked(4, qdcount);
         }
         Ok(())
+    }
+}
+
+impl<'a> WireEncoder<'a, marker::Query, marker::QuestionSection> {
+    pub fn new_query(buffer: &'a mut [u8], id: u16) -> Result<Self, EncoderError> {
+        let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(buffer)?;
+        e.encode_id(id);
+        // QR flag is zero to indicate we're a query
+        Ok(e)
     }
 }
 
@@ -431,8 +469,8 @@ impl<'a> WireEncoder<'a, marker::Response, marker::AnswerSection> {
     /// If the request contains multiple questions, then the response will also
     /// contain multiple questions.
     ///
-    pub fn new_response(buffer: &'a mut [u8], request: &WireMessage) -> Result<Self, ()> {
-        let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(buffer);
+    pub fn new_response(buffer: &'a mut [u8], request: &WireMessage) -> Result<Self, EncoderError> {
+        let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(buffer)?;
 
         e.encode_id(request.id()); // copied from request
         e.encode_flags(QR_MASK, QR_MASK); // yes, we're a response
@@ -474,7 +512,7 @@ impl<'a> WireEncoder<'a, marker::Response, marker::AnswerSection> {
         }
     }
 
-    pub fn encode_answer<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), ()> {
+    pub fn encode_answer<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), EncoderError> {
         let mut cursor = self.cursor;
         self.encode_resource_record_at(&mut cursor, r)?;
         self.cursor = cursor;
@@ -495,7 +533,7 @@ impl<'a> WireEncoder<'a, marker::Response, marker::AuthoritySection> {
         }
     }
 
-    pub fn encode_authority<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), ()> {
+    pub fn encode_authority<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), EncoderError> {
         let mut cursor = self.cursor;
         self.encode_resource_record_at(&mut cursor, r)?;
         self.cursor = cursor;
@@ -516,7 +554,7 @@ impl<'a> WireEncoder<'a, marker::Response, marker::AdditionalSection> {
         }
     }
 
-    pub fn encode_additional<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), ()> {
+    pub fn encode_additional<'b, F: Format<'b>>(&mut self, r: &'b ResourceRecord<'b, F>) -> Result<(), EncoderError> {
         let mut cursor = self.cursor;
         self.encode_resource_record_at(&mut cursor, r)?;
         self.cursor = cursor;
@@ -1088,7 +1126,7 @@ mod tests {
     #[test]
     fn new_encoder_clears_header_bytes() {
         let mut b: [u8; 12] = [0xff; 12];
-        WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+        WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
         let expected = b"\x00\x00\x00\x00\
                          \x00\x00\x00\x00\
                          \x00\x00\x00\x00";
@@ -1096,9 +1134,17 @@ mod tests {
     }
 
     #[test]
+    fn new_encoder_nok() {
+        let mut b: [u8; 11] = [0xff; 11];
+        let got = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+        let expected = Err(EncoderError);
+        assert_eq!(got, expected);
+    }
+
+    #[test]
     fn encoder_read_write_u16_at_unchecked() {
         let mut b: [u8; 12] = [0; 12];
-        let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+        let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
         let got = unsafe { e.read_u16_at_unchecked(3) };
         let expected = 0x0000;
         assert_eq!(got, expected);
@@ -1118,7 +1164,7 @@ mod tests {
     fn encoder_id() {
         let mut b: [u8; 12] = [0; 12];
         {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             e.encode_id(0x1234);
         }
         let expected = b"\x12\x34\x00\x00\
@@ -1131,7 +1177,7 @@ mod tests {
     fn encoder_flags_set_all() {
         let mut b: [u8; 12] = [0; 12];
         {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             e.encode_flags(0xffff, 0xffff);
         }
         let expected = b"\x00\x00\xff\xff\
@@ -1144,7 +1190,7 @@ mod tests {
     fn encoder_flags_clear_all() {
         let mut b: [u8; 12] = [0; 12];
         {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             unsafe { e.write_u16_at_unchecked(2, 0xffff) }
             e.encode_flags(0xffff, 0xffff);
         }
@@ -1158,7 +1204,7 @@ mod tests {
     fn encoder_flags_set_and_clear_some() {
         let mut b: [u8; 12] = [0; 12];
         {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             unsafe { e.write_u16_at_unchecked(2, 0x0950) }
             e.encode_flags(0x0ff0, 0x0590);
         }
@@ -1172,7 +1218,7 @@ mod tests {
     fn encoder_octets_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_octets_at(&mut cursor, b"foo");
             let expected = Ok(());
@@ -1190,10 +1236,10 @@ mod tests {
     fn encoder_octets_at_nok() {
         let mut b: [u8; 14] = [0; 14];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_octets_at(&mut cursor, b"foo");
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1207,7 +1253,7 @@ mod tests {
     fn encoder_u8_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u8_at(&mut cursor, 0x12);
             let expected = Ok(());
@@ -1225,10 +1271,10 @@ mod tests {
     fn encoder_u8_at_nok() {
         let mut b: [u8; 12] = [0; 12];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u8_at(&mut cursor, 0x12);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1242,7 +1288,7 @@ mod tests {
     fn encoder_u16_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u16_at(&mut cursor, 0x1234);
             let expected = Ok(());
@@ -1260,10 +1306,10 @@ mod tests {
     fn encoder_u16_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u16_at(&mut cursor, 0x1234);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1277,7 +1323,7 @@ mod tests {
     fn encoder_u32_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u32_at(&mut cursor, 0x12345678);
             let expected = Ok(());
@@ -1295,10 +1341,10 @@ mod tests {
     fn encoder_u32_at_nok() {
         let mut b: [u8; 15] = [0; 15];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_u32_at(&mut cursor, 0x12345678);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1312,7 +1358,7 @@ mod tests {
     fn encoder_class_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_class_at(&mut cursor, class::IN);
             let expected = Ok(());
@@ -1330,10 +1376,10 @@ mod tests {
     fn encoder_class_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_class_at(&mut cursor, class::IN);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1347,7 +1393,7 @@ mod tests {
     fn encoder_qclass_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_qclass_at(&mut cursor, qclass::ANY);
             let expected = Ok(());
@@ -1365,10 +1411,10 @@ mod tests {
     fn encoder_qclass_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_qclass_at(&mut cursor, qclass::ANY);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1382,7 +1428,7 @@ mod tests {
     fn encoder_type_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_type_at(&mut cursor, type_::CNAME);
             let expected = Ok(());
@@ -1400,10 +1446,10 @@ mod tests {
     fn encoder_type_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_type_at(&mut cursor, type_::CNAME);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1417,7 +1463,7 @@ mod tests {
     fn encoder_qtype_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_qtype_at(&mut cursor, qtype::ANY);
             let expected = Ok(());
@@ -1435,10 +1481,10 @@ mod tests {
     fn encoder_qtype_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_qtype_at(&mut cursor, qtype::ANY);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1452,7 +1498,7 @@ mod tests {
     fn encoder_name_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_name_at(&mut cursor, &TestName::new("foo.bar."));
             let expected = Ok(());
@@ -1472,10 +1518,10 @@ mod tests {
     fn encoder_name_at_nok() {
         let mut b: [u8; 20] = [0; 20];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
             let got = e.encode_name_at(&mut cursor, &TestName::new("foo.bar."));
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1489,7 +1535,7 @@ mod tests {
     fn encoder_question_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = Question::<TestFormat>::new(TestName::new("foo."), qtype::ANY, qclass::ANY);
             let mut cursor = 12;
             let got = e.encode_question_at(&mut cursor, &r);
@@ -1510,11 +1556,11 @@ mod tests {
     fn encoder_question_at_nok() {
         let mut b: [u8; 20] = [0; 20];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = Question::<TestFormat>::new(TestName::new("foo."), qtype::ANY, qclass::ANY);
             let mut cursor = 12;
             let got = e.encode_question_at(&mut cursor, &r);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1528,7 +1574,7 @@ mod tests {
     fn encoder_question_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let q = Question::<TestFormat>::new(TestName::new("foo."), qtype::ANY, qclass::ANY);
             let got = e.encode_question(&q);
             let expected = Ok(());
@@ -1549,10 +1595,10 @@ mod tests {
     fn encoder_question_nok() {
         let mut b: [u8; 20] = [0; 20];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let q = Question::<TestFormat>::new(TestName::new("foo."), qtype::ANY, qclass::IN);
             let got = e.encode_question(&q);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             e.cursor
         };
@@ -1566,7 +1612,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_a_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::A { address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap() };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1586,11 +1632,11 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_a_nok() {
         let mut b: [u8; 17] = [0; 17];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::A { address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap() };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1604,7 +1650,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_cname_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::CName { cname: TestName::new("foo.") };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1623,11 +1669,11 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_cname_nok() {
         let mut b: [u8; 16] = [0; 16];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::CName { cname: TestName::new("foo.") };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1641,7 +1687,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_ns_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::NS { nsdname: TestName::new("foo.") };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1660,11 +1706,11 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_ns_nok() {
         let mut b: [u8; 16] = [0; 16];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::NS { nsdname: TestName::new("foo.") };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1678,7 +1724,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_soa_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
@@ -1712,7 +1758,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_soa_nok() {
         let mut b: [u8; 43] = [0; 43];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
@@ -1724,7 +1770,7 @@ mod tests {
             };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1738,7 +1784,7 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_other_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::Other { octets: b"foo".to_vec() };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1758,11 +1804,11 @@ mod tests {
     fn encoder_rdlength_and_rdata_at_other_nok() {
         let mut b: [u8; 16] = [0; 16];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let rdata: RData<TestFormat> = RData::Other { octets: b"foo".to_vec() };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1776,7 +1822,7 @@ mod tests {
     fn encoder_resource_record_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
@@ -1804,7 +1850,7 @@ mod tests {
     fn encoder_resource_record_at_nok() {
         let mut b: [u8; 31] = [0; 31];
         let len = {
-            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
@@ -1812,7 +1858,7 @@ mod tests {
                                                       RData::CName { cname: TestName::new("bar.") });
             let mut cursor = 12;
             let got = e.encode_resource_record_at(&mut cursor, &r);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
         };
@@ -1850,7 +1896,7 @@ mod tests {
     fn encoder_answer_ok() {
         let mut b: [u8; 512] = [0xff; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
@@ -1877,14 +1923,14 @@ mod tests {
     fn encoder_answer_nok() {
         let mut b: [u8; 31] = [0xff; 31];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
                                                       1000,
                                                       RData::CName { cname: TestName::new("bar.") });
             let got = e.encode_answer(&r);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             e.cursor
         };
@@ -1898,7 +1944,7 @@ mod tests {
     fn encoder_authority_ok() {
         let mut b: [u8; 512] = [0xff; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
                                                       class::IN,
@@ -1925,14 +1971,14 @@ mod tests {
     fn encoder_authority_nok() {
         let mut b: [u8; 31] = [0xff; 31];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
                                                       class::IN,
                                                       1000,
                                                       RData::NS { nsdname: TestName::new("bar.") });
             let got = e.encode_authority(&r);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             e.cursor
         };
@@ -1946,7 +1992,7 @@ mod tests {
     fn encoder_additional_ok() {
         let mut b: [u8; 512] = [0xff; 512];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
                                                       class::IN,
@@ -1975,7 +2021,7 @@ mod tests {
     fn encoder_additional_nok() {
         let mut b: [u8; 30] = [0xff; 30];
         let len = {
-            let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b);
+            let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
                                                       class::IN,
@@ -1984,7 +2030,7 @@ mod tests {
                                                           address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap(),
                                                       });
             let got = e.encode_additional(&r);
-            let expected = Err(());
+            let expected = Err(EncoderError);
             assert_eq!(got, expected);
             e.cursor
         };

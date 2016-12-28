@@ -2,7 +2,11 @@
 
 ## v0.0.2 (unreleased)
 
-No changes yet!
+* Changed `WireEncoder` methods to now return `Result<_, EncoderError>`
+  instead of `Result<_, ()>` ([#6][issue_6]).
+* Added derived implementations (e.g., `Debug`) to `WireEncoder`-related
+  types.
+* Resolved all compile-time warnings ([#2][issue_2]).
 
 ## v0.0.1 (2016-12-26)
 
@@ -13,3 +17,6 @@ server.
 * Provides basic support for decoding request messages and encoding
   response messages, with support for a small number of resource record
   types (A, CNAME, NS, and SOA) and the IN class.
+
+[issue_2]: https://github.com/cmbrandenburg/sparkle-dns/issues/2
+[issue_6]: https://github.com/cmbrandenburg/sparkle-dns/issues/6
