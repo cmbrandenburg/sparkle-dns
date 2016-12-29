@@ -2,11 +2,13 @@
 //! applications that do dynamic per-request processing.
 
 mod format;
+mod serial;
 mod wire;
 pub mod server;
 
 pub use format::{Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Type, class, qclass, qtype,
                  type_};
+pub use serial::SerialNumber;
 pub use wire::{WireDecoder, WireEncoder, WireFormat, WireLabelIter, WireMessage, WireName};
 
 /// Encodes a DNS response message to an external buffer, starting with the

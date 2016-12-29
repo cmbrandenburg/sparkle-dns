@@ -32,7 +32,8 @@
 // enough (because we previously checked the buffer's length). In these cases,
 // we can use `unsafe` to do an unchecked write to the buffer.
 
-use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Type, class, format, std, type_};
+use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, SerialNumber, Type, class, format, std,
+     type_};
 
 /// Specifies the DNS on-the-wire protocol format.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -395,7 +396,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
             &RData::SOA { ref mname, ref rname, serial, refresh, retry, expire, minimum } => {
                 self.encode_name_at(&mut w, mname)?;
                 self.encode_name_at(&mut w, rname)?;
-                self.encode_u32_at(&mut w, serial)?;
+                self.encode_u32_at(&mut w, u32::from(serial))?;
                 self.encode_u32_at(&mut w, refresh)?;
                 self.encode_u32_at(&mut w, retry)?;
                 self.encode_u32_at(&mut w, expire)?;
@@ -780,7 +781,7 @@ impl<'a> WireDecoder<'a> {
             (_, type_::SOA) => RData::SOA {
                 mname: w.decode_name()?,
                 rname: w.decode_name()?,
-                serial: w.decode_u32()?,
+                serial: SerialNumber(w.decode_u32()?),
                 refresh: w.decode_u32()?,
                 retry: w.decode_u32()?,
                 expire: w.decode_u32()?,
@@ -1034,7 +1035,7 @@ impl<'a> TrustedDecoder<'a> {
             (_, type_::SOA) => RData::SOA {
                 mname: self.decode_name_unchecked(),
                 rname: self.decode_name_unchecked(),
-                serial: self.decode_u32_unchecked(),
+                serial: SerialNumber(self.decode_u32_unchecked()),
                 refresh: self.decode_u32_unchecked(),
                 retry: self.decode_u32_unchecked(),
                 expire: self.decode_u32_unchecked(),
@@ -1063,7 +1064,7 @@ impl<'a> TrustedDecoder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use {Class, Format, Name, Question, RData, ResourceRecord, Type, class, qclass, qtype, std, type_};
+    use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Type, class, qclass, qtype, std, type_};
     use std::str::FromStr;
     use super::*;
     use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
@@ -1728,7 +1729,7 @@ mod tests {
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
-                serial: 0x01020304,
+                serial: SerialNumber(0x01020304),
                 refresh: 0x5060708,
                 retry: 0x090a0b0c,
                 expire: 0x0d0e0f10,
@@ -1762,7 +1763,7 @@ mod tests {
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
-                serial: 0x01020304,
+                serial: SerialNumber(0x01020304),
                 refresh: 0x5060708,
                 retry: 0x090a0b0c,
                 expire: 0x0d0e0f10,
@@ -2516,7 +2517,7 @@ mod tests {
         let expected = Ok(RData::SOA {
             mname: WireName { decoder: unsafe { o.as_trusted() } },
             rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
-            serial: 0x01020304,
+            serial: SerialNumber(0x01020304),
             refresh: 0x05060708,
             retry: 0x090a0b0c,
             expire: 0x0d0e0f10,
@@ -2932,7 +2933,7 @@ mod tests {
         let expected = RData::SOA {
             mname: WireName { decoder: o.clone() },
             rname: WireName { decoder: o.clone().with_cursor_offset(5) },
-            serial: 0x01020304,
+            serial: SerialNumber(0x01020304),
             refresh: 0x05060708,
             retry: 0x090a0b0c,
             expire: 0x0d0e0f10,

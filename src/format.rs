@@ -1,4 +1,4 @@
-use std;
+use {SerialNumber, std};
 
 /// Associates the set of DNS types for a common format.
 pub trait Format<'a> {
@@ -98,7 +98,7 @@ pub enum RData<'a, F: Format<'a>> {
     SOA {
         mname: F::Name,
         rname: F::Name,
-        serial: u32,
+        serial: SerialNumber,
         refresh: u32,
         retry: u32,
         expire: u32,
