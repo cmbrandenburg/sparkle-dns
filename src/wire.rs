@@ -32,7 +32,7 @@
 // enough (because we previously checked the buffer's length). In these cases,
 // we can use `unsafe` to do an unchecked write to the buffer.
 
-use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, SerialNumber, Type, class, format, std,
+use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, format, std,
      type_};
 
 /// Specifies the DNS on-the-wire protocol format.
@@ -397,10 +397,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
                 self.encode_name_at(&mut w, mname)?;
                 self.encode_name_at(&mut w, rname)?;
                 self.encode_u32_at(&mut w, u32::from(serial))?;
-                self.encode_u32_at(&mut w, refresh)?;
-                self.encode_u32_at(&mut w, retry)?;
-                self.encode_u32_at(&mut w, expire)?;
-                self.encode_u32_at(&mut w, minimum)?;
+                self.encode_u32_at(&mut w, refresh.as_u32())?;
+                self.encode_u32_at(&mut w, retry.as_u32())?;
+                self.encode_u32_at(&mut w, expire.as_u32())?;
+                self.encode_u32_at(&mut w, minimum.as_u32())?;
             }
             &RData::Other { ref octets } => self.encode_octets_at(&mut w, octets.as_ref())?,
         }
@@ -419,7 +419,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         self.encode_name_at(&mut w, r.name())?;
         self.encode_type_at(&mut w, r.type_())?;
         self.encode_class_at(&mut w, r.class())?;
-        self.encode_u32_at(&mut w, r.ttl())?;
+        self.encode_u32_at(&mut w, r.ttl().as_u32())?;
         self.encode_rdlength_and_rdata_at(&mut w, r.rdata())?;
         *cursor = w;
         Ok(())
@@ -782,10 +782,10 @@ impl<'a> WireDecoder<'a> {
                 mname: w.decode_name()?,
                 rname: w.decode_name()?,
                 serial: SerialNumber(w.decode_u32()?),
-                refresh: w.decode_u32()?,
-                retry: w.decode_u32()?,
-                expire: w.decode_u32()?,
-                minimum: w.decode_u32()?,
+                refresh: Ttl(w.decode_u32()?),
+                retry: Ttl(w.decode_u32()?),
+                expire: Ttl(w.decode_u32()?),
+                minimum: Ttl(w.decode_u32()?),
             },
             (_, _) => RData::Other { octets: w.decode_octets(rdlength as usize)? },
         };
@@ -1036,10 +1036,10 @@ impl<'a> TrustedDecoder<'a> {
                 mname: self.decode_name_unchecked(),
                 rname: self.decode_name_unchecked(),
                 serial: SerialNumber(self.decode_u32_unchecked()),
-                refresh: self.decode_u32_unchecked(),
-                retry: self.decode_u32_unchecked(),
-                expire: self.decode_u32_unchecked(),
-                minimum: self.decode_u32_unchecked(),
+                refresh: Ttl(self.decode_u32_unchecked()),
+                retry: Ttl(self.decode_u32_unchecked()),
+                expire: Ttl(self.decode_u32_unchecked()),
+                minimum: Ttl(self.decode_u32_unchecked()),
             },
             _ => RData::Other { octets: self.decode_octets_unchecked(rdlength as usize) },
         }
@@ -1049,7 +1049,7 @@ impl<'a> TrustedDecoder<'a> {
         let name = self.decode_name_unchecked();
         let type_ = self.decode_type_unchecked();
         let class = self.decode_class_unchecked();
-        let ttl = self.decode_u32_unchecked();
+        let ttl = Ttl(self.decode_u32_unchecked());
         let rdlength = self.decode_u16_unchecked();
         let rdata = self.decode_rdata_unchecked(class, type_, rdlength);
         ResourceRecord::new(name, type_, class, ttl, rdata)
@@ -1064,7 +1064,8 @@ impl<'a> TrustedDecoder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Type, class, qclass, qtype, std, type_};
+    use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, qclass, qtype, std,
+         type_};
     use std::str::FromStr;
     use super::*;
     use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
@@ -1730,10 +1731,10 @@ mod tests {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
                 serial: SerialNumber(0x01020304),
-                refresh: 0x5060708,
-                retry: 0x090a0b0c,
-                expire: 0x0d0e0f10,
-                minimum: 0x11121314,
+                refresh: Ttl(0x5060708),
+                retry: Ttl(0x090a0b0c),
+                expire: Ttl(0x0d0e0f10),
+                minimum: Ttl(0x11121314),
             };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1764,10 +1765,10 @@ mod tests {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
                 serial: SerialNumber(0x01020304),
-                refresh: 0x5060708,
-                retry: 0x090a0b0c,
-                expire: 0x0d0e0f10,
-                minimum: 0x11121314,
+                refresh: Ttl(0x5060708),
+                retry: Ttl(0x090a0b0c),
+                expire: Ttl(0x0d0e0f10),
+                minimum: Ttl(0x11121314),
             };
             let mut cursor = 12;
             let got = e.encode_rdlength_and_rdata_at(&mut cursor, &rdata);
@@ -1827,7 +1828,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let mut cursor = 12;
             let got = e.encode_resource_record_at(&mut cursor, &r);
@@ -1855,7 +1856,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let mut cursor = 12;
             let got = e.encode_resource_record_at(&mut cursor, &r);
@@ -1901,7 +1902,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let got = e.encode_answer(&r);
             let expected = Ok(());
@@ -1928,7 +1929,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let got = e.encode_answer(&r);
             let expected = Err(EncoderError);
@@ -1949,7 +1950,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::NS { nsdname: TestName::new("bar.") });
             let got = e.encode_authority(&r);
             let expected = Ok(());
@@ -1976,7 +1977,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::NS { nsdname: TestName::new("bar.") });
             let got = e.encode_authority(&r);
             let expected = Err(EncoderError);
@@ -1997,7 +1998,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::A {
                                                           address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap(),
                                                       });
@@ -2026,7 +2027,7 @@ mod tests {
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
                                                       class::IN,
-                                                      1000,
+                                                      Ttl(1000),
                                                       RData::A {
                                                           address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap(),
                                                       });
@@ -2518,10 +2519,10 @@ mod tests {
             mname: WireName { decoder: unsafe { o.as_trusted() } },
             rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
             serial: SerialNumber(0x01020304),
-            refresh: 0x05060708,
-            retry: 0x090a0b0c,
-            expire: 0x0d0e0f10,
-            minimum: 0x11121314,
+            refresh: Ttl(0x05060708),
+            retry: Ttl(0x090a0b0c),
+            expire: Ttl(0x0d0e0f10),
+            minimum: Ttl(0x11121314),
         });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(30));
@@ -2934,10 +2935,10 @@ mod tests {
             mname: WireName { decoder: o.clone() },
             rname: WireName { decoder: o.clone().with_cursor_offset(5) },
             serial: SerialNumber(0x01020304),
-            refresh: 0x05060708,
-            retry: 0x090a0b0c,
-            expire: 0x0d0e0f10,
-            minimum: 0x11121314,
+            refresh: Ttl(0x05060708),
+            retry: Ttl(0x090a0b0c),
+            expire: Ttl(0x0d0e0f10),
+            minimum: Ttl(0x11121314),
         };
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(30));
@@ -2961,7 +2962,7 @@ mod tests {
             ResourceRecord::new(WireName { decoder: o.clone() },
                                 type_::CNAME,
                                 class::IN,
-                                1000,
+                                Ttl(1000),
                                 RData::CName { cname: WireName { decoder: o.clone().with_cursor_offset(15) } });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(20));

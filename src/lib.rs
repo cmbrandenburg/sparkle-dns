@@ -3,12 +3,14 @@
 
 mod format;
 mod serial;
+mod ttl;
 mod wire;
 pub mod server;
 
 pub use format::{Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Type, class, qclass, qtype,
                  type_};
 pub use serial::SerialNumber;
+pub use ttl::Ttl;
 pub use wire::{WireDecoder, WireEncoder, WireFormat, WireLabelIter, WireMessage, WireName};
 
 /// Encodes a DNS response message to an external buffer, starting with the

@@ -7,6 +7,7 @@
 * Changed zone serial number type from `u32` to new `SerialNumber` type
   ([#1](issue_1)). The new type enforces a partial ordering using
   sequence space arithmetic.
+* Changed time value type from `u32` to new `Ttl` type ([#3](issue_3)).
 * Added derived implementations (e.g., `Debug`) to `WireEncoder`-related
   types.
 * Resolved all compile-time warnings ([#2][issue_2]).
@@ -23,4 +24,5 @@ server.
 
 [issue_1]: https://github.com/cmbrandenburg/sparkle-dns/issues/1
 [issue_2]: https://github.com/cmbrandenburg/sparkle-dns/issues/2
+[issue_3]: https://github.com/cmbrandenburg/sparkle-dns/issues/3
 [issue_6]: https://github.com/cmbrandenburg/sparkle-dns/issues/6

@@ -1,4 +1,4 @@
-use {SerialNumber, std};
+use {SerialNumber, Ttl, std};
 
 /// Associates the set of DNS types for a common format.
 pub trait Format<'a> {
@@ -48,22 +48,22 @@ pub struct ResourceRecord<'a, F: Format<'a>> {
     name: F::Name,
     type_: Type,
     class: Class,
-    ttl: u32,
+    ttl: Ttl,
     rdata: RData<'a, F>,
 }
 
 impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
-    pub fn new<N: Into<F::Name>, R: Into<RData<'a, F>>>(name: N,
-                                                        type_: Type,
-                                                        class: Class,
-                                                        ttl: u32,
-                                                        rdata: R)
-                                                        -> Self {
+    pub fn new<N: Into<F::Name>, IntoT: Into<Ttl>, R: Into<RData<'a, F>>>(name: N,
+                                                                          type_: Type,
+                                                                          class: Class,
+                                                                          ttl: IntoT,
+                                                                          rdata: R)
+                                                                          -> Self {
         ResourceRecord {
             name: name.into(),
             type_: type_,
             class: class,
-            ttl: ttl,
+            ttl: ttl.into(),
             rdata: rdata.into(),
         }
     }
@@ -80,7 +80,7 @@ impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
         self.class
     }
 
-    pub fn ttl(&self) -> u32 {
+    pub fn ttl(&self) -> Ttl {
         self.ttl
     }
 
@@ -99,10 +99,10 @@ pub enum RData<'a, F: Format<'a>> {
         mname: F::Name,
         rname: F::Name,
         serial: SerialNumber,
-        refresh: u32,
-        retry: u32,
-        expire: u32,
-        minimum: u32,
+        refresh: Ttl,
+        retry: Ttl,
+        expire: Ttl,
+        minimum: Ttl,
     },
     Other { octets: F::RawOctets },
 }
