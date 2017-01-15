@@ -10,7 +10,7 @@ use {WireDecoder, WireEncoder, WireMessage, std, wire};
 use std::net::UdpSocket;
 use std::sync::Arc;
 
-// FIXME: Replace println statements with rigorous logging.
+// TODO: Replace println statements with rigorous logging.
 
 /// Specifies an error that occurred while receiving a request and sending its
 /// response.
@@ -101,7 +101,7 @@ impl<'a, H: Handler> Server<'a, H> {
             let mut obuffer: [u8; MAX_UDP_MESSAGE_LEN] = [0; MAX_UDP_MESSAGE_LEN];
             let encoder = match WireEncoder::new_response(&mut obuffer[..], &request) {
                 Ok(x) => x,
-                Err(_) => continue, // FIXME: Should send a FORMERR here, probably.
+                Err(_) => continue, // TODO: Should send a SERVFAIL or FORMERR here, probably.
             };
 
             let encoder = self.handler.handle_query(&request, encoder);

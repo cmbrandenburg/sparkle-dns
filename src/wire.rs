@@ -850,9 +850,6 @@ impl<'a> WireDecoder<'a> {
 
     pub fn decode_message(&mut self) -> Result<WireMessage<'a>, DecoderError> {
 
-        // FIXME: Test this function. Probably should first figure out what to
-        // do with the flags first, though.
-
         let mut w = self.clone();
 
         let id = w.decode_u16()?;
