@@ -1,5 +1,9 @@
 # Sparkle-DNS Change Log
 
+## v0.0.3 (unreleased)
+
+No changes yet!
+
 ## v0.0.2 (2017-01-15)
 
 Breaking changes:
