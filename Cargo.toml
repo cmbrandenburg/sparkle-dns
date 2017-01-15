@@ -1,11 +1,11 @@
 [package]
 name = "sparkle-dns"
-version = "0.0.2-master"
+version = "0.0.2"
 authors = ["Craig M. Brandenburg <c.m.brandenburg@gmail.com>"]
 license = "MIT/Apache-2.0"
 description = "DNS server framework"
 repository = "https://github.com/cmbrandenburg/sparkle-dns"
-documentation = "https://docs.rs/sparkle-dns/0.0.1/sparkle/"
+documentation = "https://docs.rs/sparkle-dns"
 keywords = ["dns"]
 
 [lib]

@@ -1,6 +1,8 @@
 # Sparkle-DNS Change Log
 
-## v0.0.2 (unreleased)
+## v0.0.2 (2017-01-15)
+
+Breaking changes:
 
 * Changed `WireEncoder` methods to now return `Result<_, EncoderError>`
   instead of `Result<_, ()>` ([#6][issue_6]).
@@ -8,6 +10,9 @@
   ([#1](issue_1)). The new type enforces a partial ordering using
   sequence space arithmetic.
 * Changed time value type from `u32` to new `Ttl` type ([#3](issue_3)).
+
+Additional changes:
+
 * Added derived implementations (e.g., `Debug`) to `WireEncoder`-related
   types.
 * Resolved all compile-time warnings ([#2][issue_2]).
