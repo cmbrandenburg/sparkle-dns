@@ -229,7 +229,9 @@ pub fn is_label_valid(s: &[u8]) -> bool {
     if !c.is_alphanumeric() {
         return false;
     }
-    s.iter().map(|&b| b as char).all(|c| c.is_alphanumeric() || c == '-')
+    s.iter()
+        .map(|&b| b as char)
+        .all(|c| c.is_alphanumeric() || c == '-')
 }
 
 #[cfg(test)]

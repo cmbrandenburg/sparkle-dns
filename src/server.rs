@@ -60,16 +60,17 @@ impl<'a, H: Handler> Server<'a, H> {
     pub fn new(h: &'a H) -> Result<Self, ServerError> {
         // TODO: Support options for binding to other ports.
         let addr = "0.0.0.0:53";
-        let socket = UdpSocket::bind(addr).map_err(|e| {
-                ServerError::Io {
-                    inner: e,
-                    what: format!("Failed to bind UDP socket to {}", addr),
-                }
-            })?;
+        let socket = UdpSocket::bind(addr)
+            .map_err(|e| {
+                         ServerError::Io {
+                             inner: e,
+                             what: format!("Failed to bind UDP socket to {}", addr),
+                         }
+                     })?;
         Ok(Server {
-            socket: Arc::new(socket),
-            handler: h,
-        })
+               socket: Arc::new(socket),
+               handler: h,
+           })
     }
 
     pub fn serve(self) -> Result<(), ServerError> {
@@ -80,11 +81,11 @@ impl<'a, H: Handler> Server<'a, H> {
             let (recv_len, peer_addr) = self.socket
                 .recv_from(&mut ibuffer)
                 .map_err(|e| {
-                    ServerError::Io {
-                        inner: e,
-                        what: String::from("Failed to receive from UDP socket"),
-                    }
-                })?;
+                             ServerError::Io {
+                                 inner: e,
+                                 what: String::from("Failed to receive from UDP socket"),
+                             }
+                         })?;
             let ipayload = &ibuffer[..recv_len];
 
             let mut decoder = WireDecoder::new(ipayload);

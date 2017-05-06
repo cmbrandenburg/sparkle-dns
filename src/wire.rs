@@ -269,10 +269,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         }
 
         Ok(WireEncoder {
-            _phantom: std::marker::PhantomData,
-            buffer: buffer,
-            cursor: HEADER_LEN,
-        })
+               _phantom: std::marker::PhantomData,
+               buffer: buffer,
+               cursor: HEADER_LEN,
+           })
     }
 
     unsafe fn read_u16_at_unchecked(&self, index: usize) -> u16 {
@@ -315,14 +315,14 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         self.buffer
             .get_mut(*cursor)
             .and_then(|x| {
-                *x = v;
-                *cursor += 1;
-                Some(())
-            })
+                          *x = v;
+                          *cursor += 1;
+                          Some(())
+                      })
             .or_else(|| {
-                self.encode_flags(TC_MASK, TC_MASK);
-                None
-            })
+                         self.encode_flags(TC_MASK, TC_MASK);
+                         None
+                     })
             .map(|_| ())
             .ok_or(EncoderError)
     }
@@ -393,7 +393,15 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
             &RData::A { ref address } => self.encode_octets_at(&mut w, &address.octets()[..])?,
             &RData::CName { ref cname } => self.encode_name_at(&mut w, cname)?,
             &RData::NS { ref nsdname } => self.encode_name_at(&mut w, nsdname)?,
-            &RData::SOA { ref mname, ref rname, serial, refresh, retry, expire, minimum } => {
+            &RData::SOA {
+                 ref mname,
+                 ref rname,
+                 serial,
+                 refresh,
+                 retry,
+                 expire,
+                 minimum,
+             } => {
                 self.encode_name_at(&mut w, mname)?;
                 self.encode_name_at(&mut w, rname)?;
                 self.encode_u32_at(&mut w, u32::from(serial))?;
@@ -637,11 +645,17 @@ impl<'a> WireDecoder<'a> {
 
     #[cfg(test)]
     fn with_cursor_offset(&self, n: usize) -> Self {
-        WireDecoder { cursor: self.cursor + n, ..*self }
+        WireDecoder {
+            cursor: self.cursor + n,
+            ..*self
+        }
     }
 
     unsafe fn as_trusted(&self) -> TrustedDecoder<'a> {
-        TrustedDecoder { cursor: self.cursor, ..TrustedDecoder::new(self.buffer) }
+        TrustedDecoder {
+            cursor: self.cursor,
+            ..TrustedDecoder::new(self.buffer)
+        }
     }
 
     fn decode_u8(&mut self) -> Result<u8, DecoderError> {
@@ -871,13 +885,13 @@ impl<'a> WireDecoder<'a> {
         *self = w; // no error -> now safe to mutate (move cursor)
 
         Ok(WireMessage {
-            id: id,
-            flags: flags,
-            question_section: question_section,
-            answer_section: answer_section,
-            authority_section: authority_section,
-            additional_section: additional_section,
-        })
+               id: id,
+               flags: flags,
+               question_section: question_section,
+               answer_section: answer_section,
+               authority_section: authority_section,
+               additional_section: additional_section,
+           })
     }
 }
 
@@ -928,7 +942,10 @@ impl<'a> TrustedDecoder<'a> {
 
     #[cfg(test)]
     fn with_cursor_offset(&self, n: usize) -> Self {
-        TrustedDecoder { cursor: self.cursor + n, ..*self }
+        TrustedDecoder {
+            cursor: self.cursor + n,
+            ..*self
+        }
     }
 
     #[cfg(not(debug_assertions))]
@@ -992,9 +1009,9 @@ impl<'a> TrustedDecoder<'a> {
             } else {
                 debug_assert_eq!(len & 0b_1100_0000, 0b_0000_0000);
                 return match len as usize {
-                    0 => None,
-                    len @ _ => Some(std::str::from_utf8_unchecked(self.decode_octets_unchecked(len))),
-                };
+                           0 => None,
+                           len @ _ => Some(std::str::from_utf8_unchecked(self.decode_octets_unchecked(len))),
+                       };
             }
         }
     }
@@ -1061,11 +1078,11 @@ impl<'a> TrustedDecoder<'a> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
     use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, qclass, qtype, std,
          type_};
     use std::str::FromStr;
-    use super::*;
-    use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
 
     struct TestFormat;
 
@@ -2225,7 +2242,7 @@ mod tests {
                                           \x03foo\
                                           \x03bar\
                                           \x00")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_name();
         let expected = Ok(WireName { decoder: unsafe { o.as_trusted() } });
@@ -2242,7 +2259,7 @@ mod tests {
                                           \xc1\
                                           \x03foo\
                                           \xc6")
-            .with_cursor_offset(11);
+                .with_cursor_offset(11);
         let o = d.clone();
         let got = d.decode_name();
         let expected = Ok(WireName { decoder: unsafe { o.as_trusted() } });
@@ -2296,7 +2313,7 @@ mod tests {
 
     #[test]
     fn untrusted_decoder_name_nok_label_is_invalid() {
-        let mut d = WireDecoder::new(b"\x01-\x00");// names cannot start with a hyphen
+        let mut d = WireDecoder::new(b"\x01-\x00"); // names cannot start with a hyphen
         let o = d.clone();
         let got = d.decode_name();
         let expected = Err(DecoderError::InvalidName);
@@ -2338,13 +2355,13 @@ mod tests {
         let mut d = WireDecoder::new(b"\x00\
                                             \x03foo\x00\x00\x05\x00\x01\
                                             \x03bar\x00\x00\x05\x00\x01")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_question_section(2);
         let expected = Ok(QuestionSection {
-            count: 2,
-            decoder: unsafe { o.clone().as_trusted() },
-        });
+                              count: 2,
+                              decoder: unsafe { o.clone().as_trusted() },
+                          });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(18));
     }
@@ -2509,18 +2526,18 @@ mod tests {
                                        \x09\x0a\x0b\x0c\
                                        \x0d\x0e\x0f\x10\
                                        \x11\x12\x13\x14")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 30);
         let expected = Ok(RData::SOA {
-            mname: WireName { decoder: unsafe { o.as_trusted() } },
-            rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
-            serial: SerialNumber(0x01020304),
-            refresh: Ttl(0x05060708),
-            retry: Ttl(0x090a0b0c),
-            expire: Ttl(0x0d0e0f10),
-            minimum: Ttl(0x11121314),
-        });
+                              mname: WireName { decoder: unsafe { o.as_trusted() } },
+                              rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
+                              serial: SerialNumber(0x01020304),
+                              refresh: Ttl(0x05060708),
+                              retry: Ttl(0x090a0b0c),
+                              expire: Ttl(0x0d0e0f10),
+                              minimum: Ttl(0x11121314),
+                          });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(30));
     }
@@ -2535,7 +2552,7 @@ mod tests {
                                        \x09\x0a\x0b\x0c\
                                        \x0d\x0e\x0f\x10\
                                        \x11\x12\x13\x14")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 30);
         let expected = Err(DecoderError::InvalidName);
@@ -2553,7 +2570,7 @@ mod tests {
                                        \x09\x0a\x0b\x0c\
                                        \x0d\x0e\x0f\x10\
                                        \x11\x12\x13\x14")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 30);
         let expected = Err(DecoderError::InvalidName);
@@ -2571,7 +2588,7 @@ mod tests {
                                        \x09\x0a\x0b\x0c\
                                        \x0d\x0e\x0f\x10\
                                        \x11\x12\x13")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 29);
         let expected = Err(DecoderError::UnexpectedEof);
@@ -2589,7 +2606,7 @@ mod tests {
                                        \x09\x0a\x0b\x0c\
                                        \x0d\x0e\x0f\x10\
                                        \x11\x12\x13\x14")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 29);
         let expected = Err(DecoderError::BadRdlength);
@@ -2612,13 +2629,13 @@ mod tests {
                                          \x00\x00\x03\xe8\
                                          \x00\x05\
                                          \x03baz\x00")
-            .with_cursor_offset(1);
+                .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_resource_record_section(2);
         let expected = Ok(ResourceRecordSection {
-            count: 2,
-            decoder: unsafe { o.as_trusted() },
-        });
+                              count: 2,
+                              decoder: unsafe { o.as_trusted() },
+                          });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(40));
     }
@@ -2649,25 +2666,25 @@ mod tests {
         let o = d.clone();
         let got = d.decode_message();
         let expected = Ok(WireMessage {
-            id: 0x1234,
-            flags: 0x8180,
-            question_section: QuestionSection {
-                count: 1,
-                decoder: unsafe { o.with_cursor_offset(12).as_trusted() },
-            },
-            answer_section: ResourceRecordSection {
-                count: 2,
-                decoder: unsafe { o.with_cursor_offset(21).as_trusted() },
-            },
-            authority_section: ResourceRecordSection {
-                count: 0,
-                decoder: unsafe { o.with_cursor_offset(59).as_trusted() },
-            },
-            additional_section: ResourceRecordSection {
-                count: 0,
-                decoder: unsafe { o.with_cursor_offset(59).as_trusted() },
-            },
-        });
+                              id: 0x1234,
+                              flags: 0x8180,
+                              question_section: QuestionSection {
+                                  count: 1,
+                                  decoder: unsafe { o.with_cursor_offset(12).as_trusted() },
+                              },
+                              answer_section: ResourceRecordSection {
+                                  count: 2,
+                                  decoder: unsafe { o.with_cursor_offset(21).as_trusted() },
+                              },
+                              authority_section: ResourceRecordSection {
+                                  count: 0,
+                                  decoder: unsafe { o.with_cursor_offset(59).as_trusted() },
+                              },
+                              additional_section: ResourceRecordSection {
+                                  count: 0,
+                                  decoder: unsafe { o.with_cursor_offset(59).as_trusted() },
+                              },
+                          });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(59));
     }
