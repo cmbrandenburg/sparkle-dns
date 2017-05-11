@@ -53,7 +53,10 @@ pub struct WireName<'a> {
 impl<'a> Name<'a> for WireName<'a> {
     type LabelIter = WireLabelIter<'a>;
     fn labels(&'a self) -> Self::LabelIter {
-        WireLabelIter { decoder: self.decoder.clone() }
+        WireLabelIter {
+            decoder: self.decoder.clone(),
+            done: false,
+        }
     }
 }
 
@@ -62,7 +65,9 @@ impl<'a> std::fmt::Display for WireName<'a> {
         self.labels()
             .fold(String::new(), |mut a, b| {
                 a.push_str(b);
-                a.push('.');
+                if !b.is_empty() {
+                    a.push('.');
+                }
                 a
             })
             .fmt(f)
@@ -72,12 +77,23 @@ impl<'a> std::fmt::Display for WireName<'a> {
 #[derive(Clone, Debug)]
 pub struct WireLabelIter<'a> {
     decoder: TrustedDecoder<'a>,
+    done: bool,
 }
 
 impl<'a> Iterator for WireLabelIter<'a> {
     type Item = &'a str;
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe { self.decoder.decode_label_unchecked() }
+        if self.done {
+            None
+        } else {
+            match unsafe { self.decoder.decode_label_unchecked() } {
+                Some(x) => Some(x),
+                None => {
+                    self.done = true;
+                    Some("")
+                }
+            }
+        }
     }
 }
 
@@ -367,7 +383,6 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
             self.encode_u8_at(&mut w, label.len() as u8)?;
             self.encode_octets_at(&mut w, label.as_bytes())?;
         }
-        self.encode_u8_at(&mut w, 0)?;
         *cursor = w;
         Ok(())
     }
@@ -1096,8 +1111,8 @@ mod tests {
     impl TestName {
         fn new<S: Into<String>>(s: S) -> Self {
             let mut s = s.into();
-            if s.ends_with('.') {
-                s.pop();
+            if !s.ends_with('.') {
+                s.push('.');
             }
             TestName(s.split('.').map(|x| String::from(x)).collect())
         }

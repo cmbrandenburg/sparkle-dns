@@ -2,24 +2,30 @@
 
 ## v0.0.3 (unreleased)
 
-No changes yet!
+Breaking changes:
+
+* The iterator returned from the `Name::labels` trait method now yields
+  the empty string as the last item if the name is fully qualified
+  ([#11][issue_11]). Previously, the iterator made no distinction
+  between fully qualified domain names and relative domain names.
 
 ## v0.0.2 (2017-01-15)
 
 Breaking changes:
 
-* Changed `WireEncoder` methods to now return `Result<_, EncoderError>`
+* The `WireEncoder` methods now return `Result<_, EncoderError>`
   instead of `Result<_, ()>` ([#6][issue_6]).
-* Changed zone serial number type from `u32` to new `SerialNumber` type
-  ([#1](issue_1)). The new type enforces a partial ordering using
-  sequence space arithmetic.
-* Changed time value type from `u32` to new `Ttl` type ([#3](issue_3)).
+* The zone serial number type changed from a plain `u32` to a new
+  `SerialNumber` type ([#1](issue_1)). The new type enforces a partial
+  ordering using sequence space arithmetic.
+* The time value type changed from a plain `u32` to new `Ttl` type
+  ([#3](issue_3)).
 
 Additional changes:
 
-* Added derived implementations (e.g., `Debug`) to `WireEncoder`-related
-  types.
-* Resolved all compile-time warnings ([#2][issue_2]).
+* The `WireEncoder`-related types now have derived implementations
+  (e.g., `Debug`).
+* All compile-time warnings have been resolved ([#2][issue_2]).
 
 ## v0.0.1 (2016-12-26)
 
@@ -35,3 +41,4 @@ server.
 [issue_2]: https://github.com/cmbrandenburg/sparkle-dns/issues/2
 [issue_3]: https://github.com/cmbrandenburg/sparkle-dns/issues/3
 [issue_6]: https://github.com/cmbrandenburg/sparkle-dns/issues/6
+[issue_11]: https://github.com/cmbrandenburg/sparkle-dns/issues/11
