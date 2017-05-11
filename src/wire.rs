@@ -784,7 +784,7 @@ impl<'a> WireDecoder<'a> {
                         return Ok(name);
                     }
                     let label = w.decode_octets(len)?;
-                    if !format::is_label_valid(label) {
+                    if !format::is_hostname_valid(label) {
                         return Err(DecoderError::InvalidName);
                     }
                 }

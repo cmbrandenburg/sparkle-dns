@@ -9,6 +9,12 @@ Breaking changes:
   ([#11][issue_11]). Previously, the iterator made no distinction
   between fully qualified domain names and relative domain names.
 
+Fixes:
+
+* Hostname validation now conforms with RFC 1123 ([#12][issue_12]).
+  Previously, validation disallowed hostnames to begin with a decimal
+  digit (0-9), nor did it check that labels are no more than 63 octets.
+
 ## v0.0.2 (2017-01-15)
 
 Breaking changes:
@@ -42,3 +48,4 @@ server.
 [issue_3]: https://github.com/cmbrandenburg/sparkle-dns/issues/3
 [issue_6]: https://github.com/cmbrandenburg/sparkle-dns/issues/6
 [issue_11]: https://github.com/cmbrandenburg/sparkle-dns/issues/11
+[issue_12]: https://github.com/cmbrandenburg/sparkle-dns/issues/12

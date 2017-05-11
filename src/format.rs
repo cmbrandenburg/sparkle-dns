@@ -227,16 +227,31 @@ pub mod qtype {
     pub const ANY: QType = QType(255);
 }
 
-pub fn is_label_valid(s: &[u8]) -> bool {
-    debug_assert!(!s.is_empty());
+pub fn is_hostname_valid(s: &[u8]) -> bool {
+
+    // The root name is the empty string. However, we treat empty hostnames as
+    // invalid.
+
+    if s.is_empty() {
+        return false;
+    }
+
+    if 63 < s.len() {
+        return false;
+    }
+
+    // A hostname must begin and end with a letter or digit (RFC 1123, section
+    // 2.1 "Host Names and Numbers").
+
     let c = *s.first().unwrap() as char;
-    if !c.is_alphabetic() {
+    if !c.is_alphanumeric() {
         return false;
     }
     let c = *s.last().unwrap() as char;
     if !c.is_alphanumeric() {
         return false;
     }
+
     s.iter()
         .map(|&b| b as char)
         .all(|c| c.is_alphanumeric() || c == '-')
@@ -245,17 +260,32 @@ pub fn is_label_valid(s: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn is_label_valid() {
-        let f = |s: &str| super::is_label_valid(s.as_bytes());
+    fn is_hostname_valid() {
+
+        let f = |s: &str| super::is_hostname_valid(s.as_bytes());
+
         assert!(f("a"));
         assert!(f("alpha"));
         assert!(f("alpha17"));
         assert!(f("alpha-bravo"));
         assert!(f("alpha-bravo17"));
-        assert!(!f("-alpha-bravo17"));
-        assert!(!f("1alpha"));
+
+        assert!(!f(""));
+        assert!(f("the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-x"));
+        assert!(!f("the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-xx"));
+
+        assert!(f("7"));
+        assert!(f("17"));
+        assert!(f("7alpha"));
+        assert!(f("17alpha"));
+
         assert!(!f("-alpha"));
+        assert!(!f("-alpha-bravo"));
         assert!(!f("alpha-"));
+        assert!(!f("alpha-bravo-"));
+        assert!(!f("-alpha-"));
+        assert!(!f("-alpha-bravo-"));
+
         assert!(!f("alpha.bravo"));
     }
 }
