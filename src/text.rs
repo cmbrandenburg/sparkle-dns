@@ -29,7 +29,7 @@ impl TextName {
         // "What is the real maximum length of a DNS name?"
         // (https://blogs.msdn.microsoft.com/oldnewthing/20120412-00/?p=7873/)
 
-        if 253 < len_without_trailing_dot {
+        if MAX_NAME_LENGTH - 1 <= len_without_trailing_dot {
             return Err(make_text_name_parse_error());
         }
 
