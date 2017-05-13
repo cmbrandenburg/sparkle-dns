@@ -755,7 +755,7 @@ impl<'a> WireDecoder<'a> {
 
         // Ok, all set. Now do the decoding.
 
-        for _ in 0..MAX_LABELS {
+        for _ in 0..(MAX_LABELS + 1) {
             let len = w.decode_u8()?;
             if !compressed {
                 end_of_name = w.cursor;
@@ -2386,18 +2386,20 @@ mod tests {
     fn untrusted_decoder_name_nok_name_is_too_long() {
 
         fn make_name(length: usize) -> Vec<u8> {
-            let mut n = Vec::new();
-            for _ in 0..((length - 2) / 4) {
-                n.extend(b"\x03xxx");
+            debug_assert!(3 <= length);
+            let mut v = Vec::new();
+            for _ in 0..((length - 3) / 2) {
+                v.push(1);
+                v.push(b'x');
             }
-            let remainder = (length - 2) % 4;
-            n.push(remainder as u8);
+            let remainder = 2 - (length % 2);
+            v.push(remainder as u8);
             for _ in 0..remainder {
-                n.push(b'x');
+                v.push(b'x');
             }
-            n.push(0);
-            debug_assert_eq!(n.len(), length);
-            n
+            v.push(0);
+            debug_assert_eq!(v.len(), length);
+            v
         }
 
         // Check that we're in conformance with RFC 1035.
