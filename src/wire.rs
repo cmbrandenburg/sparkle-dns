@@ -34,6 +34,7 @@
 
 use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, format, std,
      type_};
+use format::MAX_NAME_LENGTH;
 
 /// Specifies the DNS on-the-wire protocol format.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -609,7 +610,10 @@ pub enum DecoderError {
     InvalidLabelLength,
 
     /// Domain name contains one or more invalid characters.
-    InvalidName,
+    InvalidLabel,
+
+    /// Domain name is too long.
+    NameTooLong,
 
     /// Domain name compression offset is out of range.
     NameOffsetOutOfRange,
@@ -627,7 +631,8 @@ impl std::error::Error for DecoderError {
             &DecoderError::BadRdlength => "RDATA content does not match RDLENGTH",
             &DecoderError::InfiniteName => "Domain name compression results in an infinite name",
             &DecoderError::InvalidLabelLength => "Domain name label field is invalid",
-            &DecoderError::InvalidName => "Domain name contains one or more invalid characters",
+            &DecoderError::InvalidLabel => "Domain name contains one or more invalid labels",
+            &DecoderError::NameTooLong => "Domain name is too long",
             &DecoderError::NameOffsetOutOfRange => "Domain name compression offset is out of range",
             &DecoderError::UnexpectedEof => "Message ends unexpectedly",
             &DecoderError::UnexpectedOctets => "Message contains extra octets",
@@ -744,12 +749,9 @@ impl<'a> WireDecoder<'a> {
         // An invalid DNS message could contain an infinite cycle of DNS labels.
         // To guard against this, we place an upper bound on the number of
         // labels. Otherwise, we would loop endlessly.
-        //
-        // Note: The maximum number of labels is equal to N / L, where N is the
-        // maximum name length (256 octets) and L is the minimum label length (2
-        // octets).
 
-        const MAX_LABELS: u32 = 128;
+        const MAX_LABELS: usize = (MAX_NAME_LENGTH - 1) / 2;
+        let mut total_len = 0;
 
         // Ok, all set. Now do the decoding.
 
@@ -764,11 +766,13 @@ impl<'a> WireDecoder<'a> {
                     let offset = (len & 0b_0011_1111) as usize;
 
                     // According to RFC 1035, section 4.1.4, it's illegal to jump
-                    // *forward* in a message (emphasis ours):
+                    // *forward* in a message:
                     //
                     // > In this scheme, an entire domain name or a list of labels
                     // at the end of a domain name is replaced with a pointer to a
                     // **prior** occurance of the same name. <
+                    //
+                    // (emphasis ours)
 
                     if offset >= w.cursor {
                         return Err(DecoderError::NameOffsetOutOfRange);
@@ -778,14 +782,26 @@ impl<'a> WireDecoder<'a> {
                 }
                 0b_0000_0000 => {
                     let len = len as usize;
+                    total_len += len + 1;
                     if 0 == len {
+
+                        // The reason we check the length now, at the end, and
+                        // not when the length calculation is performed, is so
+                        // that we can report separate errors for "too long" and
+                        // "infinite cycle" without keeping a list of previous
+                        // cursor values.
+
+                        if total_len > MAX_NAME_LENGTH {
+                            return Err(DecoderError::NameTooLong);
+                        }
+
                         let name = WireName { decoder: unsafe { self.as_trusted() } };
                         self.cursor = end_of_name; // no error -> now safe to mutate
                         return Ok(name);
                     }
                     let label = w.decode_octets(len)?;
                     if !format::is_hostname_valid(label) {
-                        return Err(DecoderError::InvalidName);
+                        return Err(DecoderError::InvalidLabel);
                     }
                 }
                 _ => {
@@ -1097,6 +1113,7 @@ mod tests {
     use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
     use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, qclass, qtype, std,
          type_};
+    use format::MAX_NAME_LENGTH;
     use std::str::FromStr;
 
     struct TestFormat;
@@ -2331,7 +2348,7 @@ mod tests {
         let mut d = WireDecoder::new(b"\x01-\x00"); // names cannot start with a hyphen
         let o = d.clone();
         let got = d.decode_name();
-        let expected = Err(DecoderError::InvalidName);
+        let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
     }
@@ -2366,6 +2383,44 @@ mod tests {
     }
 
     #[test]
+    fn untrusted_decoder_name_nok_name_is_too_long() {
+
+        fn make_name(length: usize) -> Vec<u8> {
+            let mut n = Vec::new();
+            for _ in 0..((length - 2) / 4) {
+                n.extend(b"\x03xxx");
+            }
+            let remainder = (length - 2) % 4;
+            n.push(remainder as u8);
+            for _ in 0..remainder {
+                n.push(b'x');
+            }
+            n.push(0);
+            debug_assert_eq!(n.len(), length);
+            n
+        }
+
+        // Check that we're in conformance with RFC 1035.
+        assert_eq!(MAX_NAME_LENGTH, 255);
+
+        let name_max = make_name(MAX_NAME_LENGTH);
+        let mut d = WireDecoder::new(&name_max);
+        let o = d.clone();
+        let got = d.decode_name();
+        let expected = Ok(WireName { decoder: unsafe { o.as_trusted() } });
+        assert_eq!(got, expected);
+        assert_eq!(d, o.with_cursor_offset(MAX_NAME_LENGTH));
+
+        let name_too_big = make_name(MAX_NAME_LENGTH + 1);
+        let mut d = WireDecoder::new(&name_too_big);
+        let o = d.clone();
+        let got = d.decode_name();
+        let expected = Err(DecoderError::NameTooLong);
+        assert_eq!(got, expected);
+        assert_eq!(d, o);
+    }
+
+    #[test]
     fn untrusted_decoder_question_section_ok_empty() {
         let mut d = WireDecoder::new(b"\x00\
                                             \x03foo\x00\x00\x05\x00\x01\
@@ -2386,7 +2441,7 @@ mod tests {
         let mut d = WireDecoder::new(b"\x01-\x00\x00\x05\x00\x01");
         let o = d.clone();
         let got = d.decode_question_section(1);
-        let expected = Err(DecoderError::InvalidName);
+        let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
     }
@@ -2570,7 +2625,7 @@ mod tests {
                 .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 30);
-        let expected = Err(DecoderError::InvalidName);
+        let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
     }
@@ -2588,7 +2643,7 @@ mod tests {
                 .with_cursor_offset(1);
         let o = d.clone();
         let got = d.decode_rdata(class::IN, type_::SOA, 30);
-        let expected = Err(DecoderError::InvalidName);
+        let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
     }

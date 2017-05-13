@@ -1,5 +1,7 @@
 use {SerialNumber, Ttl, std};
 
+pub const MAX_NAME_LENGTH: usize = 255;
+
 /// Associates the set of DNS types for a common format.
 pub trait Format<'a> {
     type Name: Name<'a>;
