@@ -254,9 +254,19 @@ pub fn is_hostname_valid(s: &[u8]) -> bool {
         return false;
     }
 
-    s.iter()
-        .map(|&b| b as char)
-        .all(|c| c.is_alphanumeric() || c == '-')
+    if !s.iter()
+            .map(|&b| b as char)
+            .all(|c| c.is_alphanumeric() || c == '-') {
+        return false;
+    }
+
+    // Hostnames are valid UTF-8 because they use only ASCII characters. Callers
+    // may assume this. If this assumption is ever relaxed then we'll need to
+    // possibly fix the callers, too.
+
+    debug_assert!(std::str::from_utf8(s).is_ok()); // !warning: read comment above!
+
+    true
 }
 
 #[cfg(test)]

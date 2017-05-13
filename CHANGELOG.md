@@ -2,6 +2,11 @@
 
 ## v0.0.3 (unreleased)
 
+New:
+
+* The API exports a new `TextName` type to represent the textual,
+  human-readable representation of domain names (e.g., "example.com").
+
 Breaking changes:
 
 * The iterator returned from the `Name::labels` trait method now yields
