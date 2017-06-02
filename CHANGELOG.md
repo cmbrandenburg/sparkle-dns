@@ -13,6 +13,9 @@ Breaking changes:
   the empty string as the last item if the name is fully qualified
   ([#11][issue_11]). Previously, the iterator made no distinction
   between fully qualified domain names and relative domain names.
+* The `SerialNumber` type is now named `Serial`.
+* The addition operations for the `Serial` type now take a `u32`
+  parameter instead of a `Serial`.
 
 Fixes:
 

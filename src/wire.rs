@@ -32,8 +32,7 @@
 // enough (because we previously checked the buffer's length). In these cases,
 // we can use `unsafe` to do an unchecked write to the buffer.
 
-use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, format, std,
-     type_};
+use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Serial, Ttl, Type, class, format, std, type_};
 use format::MAX_NAME_LENGTH;
 
 /// Specifies the DNS on-the-wire protocol format.
@@ -826,7 +825,7 @@ impl<'a> WireDecoder<'a> {
             (_, type_::SOA) => RData::SOA {
                 mname: w.decode_name()?,
                 rname: w.decode_name()?,
-                serial: SerialNumber(w.decode_u32()?),
+                serial: Serial(w.decode_u32()?),
                 refresh: Ttl(w.decode_u32()?),
                 retry: Ttl(w.decode_u32()?),
                 expire: Ttl(w.decode_u32()?),
@@ -1080,7 +1079,7 @@ impl<'a> TrustedDecoder<'a> {
             (_, type_::SOA) => RData::SOA {
                 mname: self.decode_name_unchecked(),
                 rname: self.decode_name_unchecked(),
-                serial: SerialNumber(self.decode_u32_unchecked()),
+                serial: Serial(self.decode_u32_unchecked()),
                 refresh: Ttl(self.decode_u32_unchecked()),
                 retry: Ttl(self.decode_u32_unchecked()),
                 expire: Ttl(self.decode_u32_unchecked()),
@@ -1111,8 +1110,7 @@ impl<'a> TrustedDecoder<'a> {
 mod tests {
     use super::*;
     use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
-    use {Class, Format, Name, Question, RData, ResourceRecord, SerialNumber, Ttl, Type, class, qclass, qtype, std,
-         type_};
+    use {Class, Format, Name, Question, RData, ResourceRecord, Serial, Ttl, Type, class, qclass, qtype, std, type_};
     use format::MAX_NAME_LENGTH;
     use std::str::FromStr;
 
@@ -1776,7 +1774,7 @@ mod tests {
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
-                serial: SerialNumber(0x01020304),
+                serial: Serial(0x01020304),
                 refresh: Ttl(0x5060708),
                 retry: Ttl(0x090a0b0c),
                 expire: Ttl(0x0d0e0f10),
@@ -1810,7 +1808,7 @@ mod tests {
             let rdata: RData<TestFormat> = RData::SOA {
                 mname: TestName::new("foo."),
                 rname: TestName::new("bar."),
-                serial: SerialNumber(0x01020304),
+                serial: Serial(0x01020304),
                 refresh: Ttl(0x5060708),
                 retry: Ttl(0x090a0b0c),
                 expire: Ttl(0x0d0e0f10),
@@ -2604,7 +2602,7 @@ mod tests {
         let expected = Ok(RData::SOA {
                               mname: WireName { decoder: unsafe { o.as_trusted() } },
                               rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
-                              serial: SerialNumber(0x01020304),
+                              serial: Serial(0x01020304),
                               refresh: Ttl(0x05060708),
                               retry: Ttl(0x090a0b0c),
                               expire: Ttl(0x0d0e0f10),
@@ -3020,7 +3018,7 @@ mod tests {
         let expected = RData::SOA {
             mname: WireName { decoder: o.clone() },
             rname: WireName { decoder: o.clone().with_cursor_offset(5) },
-            serial: SerialNumber(0x01020304),
+            serial: Serial(0x01020304),
             refresh: Ttl(0x05060708),
             retry: Ttl(0x090a0b0c),
             expire: Ttl(0x0d0e0f10),

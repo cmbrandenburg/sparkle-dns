@@ -1,4 +1,4 @@
-use {SerialNumber, Ttl, std};
+use {Serial, Ttl, std};
 
 pub const MAX_NAME_LENGTH: usize = 255;
 
@@ -108,7 +108,7 @@ pub enum RData<'a, F: Format<'a>> {
     SOA {
         mname: F::Name,
         rname: F::Name,
-        serial: SerialNumber,
+        serial: Serial,
         refresh: Ttl,
         retry: Ttl,
         expire: Ttl,

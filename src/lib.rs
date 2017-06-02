@@ -12,7 +12,7 @@ pub mod server;
 pub use error::{Error, ErrorKind};
 pub use format::{Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Type, class, qclass, qtype,
                  type_};
-pub use serial::SerialNumber;
+pub use serial::Serial;
 pub use text::TextName;
 pub use ttl::Ttl;
 pub use wire::{WireDecoder, WireEncoder, WireFormat, WireLabelIter, WireMessage, WireName};
