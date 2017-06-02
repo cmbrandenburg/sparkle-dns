@@ -410,14 +410,14 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
             &RData::CName { ref cname } => self.encode_name_at(&mut w, cname)?,
             &RData::NS { ref nsdname } => self.encode_name_at(&mut w, nsdname)?,
             &RData::SOA {
-                 ref mname,
-                 ref rname,
-                 serial,
-                 refresh,
-                 retry,
-                 expire,
-                 minimum,
-             } => {
+                ref mname,
+                ref rname,
+                serial,
+                refresh,
+                retry,
+                expire,
+                minimum,
+            } => {
                 self.encode_name_at(&mut w, mname)?;
                 self.encode_name_at(&mut w, rname)?;
                 self.encode_u32_at(&mut w, u32::from(serial))?;
