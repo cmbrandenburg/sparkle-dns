@@ -7,15 +7,17 @@ mod format;
 mod serial;
 mod text;
 mod ttl;
+mod typ;
 mod wire;
 pub mod server;
 
 pub use class::{QClass, RClass, qclass, rclass};
 pub use error::{Error, ErrorKind};
-pub use format::{Format, Name, QType, Question, RData, ResourceRecord, Type, qtype, type_};
+pub use format::{Format, Name, Question, RData, ResourceRecord};
 pub use serial::Serial;
 pub use text::TextName;
 pub use ttl::Ttl;
+pub use typ::{QType, RType, qtype, rtype};
 pub use wire::{WireDecoder, WireEncoder, WireFormat, WireLabelIter, WireMessage, WireName};
 
 /// Encodes a DNS response message to an external buffer, starting with the

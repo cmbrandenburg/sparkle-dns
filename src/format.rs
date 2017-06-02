@@ -1,4 +1,4 @@
-use {QClass, RClass, Serial, Ttl, std};
+use {QClass, QType, RClass, RType, Serial, Ttl, std};
 
 pub const MAX_NAME_LENGTH: usize = 255;
 
@@ -56,7 +56,7 @@ impl<'a, F: Format<'a>> Question<'a, F> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ResourceRecord<'a, F: Format<'a>> {
     name: F::Name,
-    type_: Type,
+    rtype: RType,
     rclass: RClass,
     ttl: Ttl,
     rdata: RData<'a, F>,
@@ -64,14 +64,14 @@ pub struct ResourceRecord<'a, F: Format<'a>> {
 
 impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
     pub fn new<N: Into<F::Name>, IntoT: Into<Ttl>, R: Into<RData<'a, F>>>(name: N,
-                                                                          type_: Type,
+                                                                          rtype: RType,
                                                                           rclass: RClass,
                                                                           ttl: IntoT,
                                                                           rdata: R)
                                                                           -> Self {
         ResourceRecord {
             name: name.into(),
-            type_: type_,
+            rtype: rtype,
             rclass: rclass,
             ttl: ttl.into(),
             rdata: rdata.into(),
@@ -82,8 +82,8 @@ impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
         &self.name
     }
 
-    pub fn type_(&self) -> Type {
-        self.type_
+    pub fn rtype(&self) -> RType {
+        self.rtype
     }
 
     pub fn rclass(&self) -> RClass {
@@ -115,71 +115,6 @@ pub enum RData<'a, F: Format<'a>> {
         minimum: Ttl,
     },
     Other { octets: F::RawOctets },
-}
-
-/// Encapsulates a TYPE value.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct Type(pub u16);
-
-impl Type {
-    /// Returns the underlying TYPE value.
-    pub fn as_u16(&self) -> u16 {
-        self.0
-    }
-}
-
-/// Encapsulates a QTYPE value.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct QType(pub u16);
-
-impl QType {
-    /// Returns the underlying QTYPE value.
-    pub fn as_u16(&self) -> u16 {
-        self.0
-    }
-}
-
-impl From<QType> for Type {
-    fn from(x: QType) -> Self {
-        Type(x.0)
-    }
-}
-
-/// Defines well known TYPE values.
-pub mod type_ {
-    use super::Type;
-
-    /// Specifies the **Internet IPv4 address** record type.
-    pub const A: Type = Type(1);
-
-    /// Specifies the **name server** record type.
-    pub const NS: Type = Type(2);
-
-    /// Specifies the **canonical name** record type.
-    pub const CNAME: Type = Type(5);
-
-    /// Specifies the **start of authority** record type.
-    pub const SOA: Type = Type(6);
-}
-
-/// Defines well known QTYPE values.
-pub mod qtype {
-    use super::QType;
-
-    /// Specifies the **Internet IPv4 address** record type.
-    pub const A: QType = QType(1);
-
-    /// Specifies the **name server** record type.
-    pub const NS: QType = QType(2);
-
-    /// Specifies the **canonical name** record type.
-    pub const CNAME: QType = QType(5);
-
-    /// Specifies the **start of authority** record type.
-    pub const SOA: QType = QType(6);
-
-    /// Specifies the **wildcard** (`*`) record type.
-    pub const ANY: QType = QType(255);
 }
 
 pub fn is_hostname_valid(s: &[u8]) -> bool {
