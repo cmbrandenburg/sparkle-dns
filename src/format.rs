@@ -1,4 +1,4 @@
-use {Serial, Ttl, std};
+use {QClass, RClass, Serial, Ttl, std};
 
 pub const MAX_NAME_LENGTH: usize = 255;
 
@@ -57,7 +57,7 @@ impl<'a, F: Format<'a>> Question<'a, F> {
 pub struct ResourceRecord<'a, F: Format<'a>> {
     name: F::Name,
     type_: Type,
-    class: Class,
+    rclass: RClass,
     ttl: Ttl,
     rdata: RData<'a, F>,
 }
@@ -65,14 +65,14 @@ pub struct ResourceRecord<'a, F: Format<'a>> {
 impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
     pub fn new<N: Into<F::Name>, IntoT: Into<Ttl>, R: Into<RData<'a, F>>>(name: N,
                                                                           type_: Type,
-                                                                          class: Class,
+                                                                          rclass: RClass,
                                                                           ttl: IntoT,
                                                                           rdata: R)
                                                                           -> Self {
         ResourceRecord {
             name: name.into(),
             type_: type_,
-            class: class,
+            rclass: rclass,
             ttl: ttl.into(),
             rdata: rdata.into(),
         }
@@ -86,8 +86,8 @@ impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
         self.type_
     }
 
-    pub fn class(&self) -> Class {
-        self.class
+    pub fn rclass(&self) -> RClass {
+        self.rclass
     }
 
     pub fn ttl(&self) -> Ttl {
@@ -115,53 +115,6 @@ pub enum RData<'a, F: Format<'a>> {
         minimum: Ttl,
     },
     Other { octets: F::RawOctets },
-}
-
-/// Encapsulates a CLASS value.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct Class(pub u16);
-
-impl Class {
-    /// Returns the underlying CLASS value.
-    pub fn as_u16(&self) -> u16 {
-        self.0
-    }
-}
-
-/// Encapsulates a QCLASS value.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct QClass(pub u16);
-
-impl QClass {
-    /// Returns the underlying QCLASS value.
-    pub fn as_u16(&self) -> u16 {
-        self.0
-    }
-}
-
-impl From<QClass> for Class {
-    fn from(x: QClass) -> Self {
-        Class(x.0)
-    }
-}
-
-/// Defines well known CLASS values.
-pub mod class {
-    use super::Class;
-
-    /// Specifies the **Internet** class.
-    pub const IN: Class = Class(1);
-}
-
-/// Defines well known QCLASS values.
-pub mod qclass {
-    use super::QClass;
-
-    /// Specifies the **Internet** class.
-    pub const IN: QClass = QClass(1);
-
-    /// Specifies the **wildcard** (`*`) class.
-    pub const ANY: QClass = QClass(255);
 }
 
 /// Encapsulates a TYPE value.

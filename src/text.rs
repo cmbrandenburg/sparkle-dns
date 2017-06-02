@@ -95,7 +95,7 @@ impl<'a> Iterator for TextLabelIter<'a> {
 }
 
 fn make_text_name_parse_error() -> Error {
-    Error::new_with_static_message(ErrorKind::BadName, "Invalid DNS name")
+    Error::new(ErrorKind::InvalidInput, "Invalid DNS name")
 }
 
 #[cfg(test)]
@@ -119,7 +119,7 @@ mod tests {
         macro_rules! nok {
             ($source:expr) => {
                 match TextName::from_str(&$source) {
-                    Err(ref e) if e.kind() == ErrorKind::BadName => {}
+                    Err(ref e) if e.kind() == ErrorKind::InvalidInput => {}
                     got @ _ => panic!("Got unexpected result: {:?}", got),
                 }
             }

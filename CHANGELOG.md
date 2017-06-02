@@ -6,14 +6,18 @@ New:
 
 * The API exports a new `TextName` type to represent the textual,
   human-readable representation of domain names (e.g., "example.com").
+* There is now support for CLASS and QCLASS text conversions.
 
 Breaking changes:
 
+* Several renames:
+    * `class` → `rclass` (module).
+    * `Class` → `RClass`.
+    * `SerialNumber` → `Serial`.
 * The iterator returned from the `Name::labels` trait method now yields
   the empty string as the last item if the name is fully qualified
   ([#11][issue_11]). Previously, the iterator made no distinction
   between fully qualified domain names and relative domain names.
-* The `SerialNumber` type is now named `Serial`.
 * The addition operations for the `Serial` type now take a `u32`
   parameter instead of a `Serial`.
 

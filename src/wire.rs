@@ -32,7 +32,8 @@
 // enough (because we previously checked the buffer's length). In these cases,
 // we can use `unsafe` to do an unchecked write to the buffer.
 
-use {Class, Format, Name, QClass, QType, Question, RData, ResourceRecord, Serial, Ttl, Type, class, format, std, type_};
+use {Format, Name, QClass, QType, Question, RClass, RData, ResourceRecord, Serial, Ttl, Type, format, rclass, std,
+     type_};
 use format::MAX_NAME_LENGTH;
 
 /// Specifies the DNS on-the-wire protocol format.
@@ -359,7 +360,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         Ok(())
     }
 
-    fn encode_class_at(&mut self, cursor: &mut usize, class: Class) -> Result<(), EncoderError> {
+    fn encode_rclass_at(&mut self, cursor: &mut usize, class: RClass) -> Result<(), EncoderError> {
         self.encode_u16_at(cursor, class.0)
     }
 
@@ -441,7 +442,7 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         let mut w = *cursor;
         self.encode_name_at(&mut w, r.name())?;
         self.encode_type_at(&mut w, r.type_())?;
-        self.encode_class_at(&mut w, r.class())?;
+        self.encode_rclass_at(&mut w, r.rclass())?;
         self.encode_u32_at(&mut w, r.ttl().as_u32())?;
         self.encode_rdlength_and_rdata_at(&mut w, r.rdata())?;
         *cursor = w;
@@ -712,8 +713,8 @@ impl<'a> WireDecoder<'a> {
         Ok(x)
     }
 
-    fn decode_class(&mut self) -> Result<Class, DecoderError> {
-        Ok(Class(self.decode_u16()?))
+    fn decode_rclass(&mut self) -> Result<RClass, DecoderError> {
+        Ok(RClass(self.decode_u16()?))
     }
 
     fn decode_qclass(&mut self) -> Result<QClass, DecoderError> {
@@ -815,11 +816,11 @@ impl<'a> WireDecoder<'a> {
 
     }
 
-    fn decode_rdata(&mut self, c: Class, t: Type, rdlength: u16) -> Result<RData<'a, WireFormat>, DecoderError> {
+    fn decode_rdata(&mut self, c: RClass, t: Type, rdlength: u16) -> Result<RData<'a, WireFormat>, DecoderError> {
 
         let mut w = self.clone();
         let rdata = match (c, t) {
-            (class::IN, type_::A) => RData::A { address: std::net::Ipv4Addr::from(w.decode_u32()?) },
+            (rclass::IN, type_::A) => RData::A { address: std::net::Ipv4Addr::from(w.decode_u32()?) },
             (_, type_::CNAME) => RData::CName { cname: w.decode_name()? },
             (_, type_::NS) => RData::NS { nsdname: w.decode_name()? },
             (_, type_::SOA) => RData::SOA {
@@ -853,7 +854,7 @@ impl<'a> WireDecoder<'a> {
         for _ in 0..count {
             w.decode_name()?;
             let t = w.decode_type()?;
-            let c = w.decode_class()?;
+            let c = w.decode_rclass()?;
             w.decode_u32()?;
             let rdlength = w.decode_u16()?;
             w.decode_rdata(c, t, rdlength)?;
@@ -1014,8 +1015,8 @@ impl<'a> TrustedDecoder<'a> {
         x
     }
 
-    pub unsafe fn decode_class_unchecked(&mut self) -> Class {
-        Class(self.decode_u16_unchecked())
+    pub unsafe fn decode_rclass_unchecked(&mut self) -> RClass {
+        RClass(self.decode_u16_unchecked())
     }
 
     pub unsafe fn decode_qclass_unchecked(&mut self) -> QClass {
@@ -1071,9 +1072,9 @@ impl<'a> TrustedDecoder<'a> {
         }
     }
 
-    pub unsafe fn decode_rdata_unchecked(&mut self, c: Class, t: Type, rdlength: u16) -> RData<'a, WireFormat> {
+    pub unsafe fn decode_rdata_unchecked(&mut self, c: RClass, t: Type, rdlength: u16) -> RData<'a, WireFormat> {
         match (c, t) {
-            (class::IN, type_::A) => RData::A { address: std::net::Ipv4Addr::from(self.decode_u32_unchecked()) },
+            (rclass::IN, type_::A) => RData::A { address: std::net::Ipv4Addr::from(self.decode_u32_unchecked()) },
             (_, type_::CNAME) => RData::CName { cname: self.decode_name_unchecked() },
             (_, type_::NS) => RData::NS { nsdname: self.decode_name_unchecked() },
             (_, type_::SOA) => RData::SOA {
@@ -1092,7 +1093,7 @@ impl<'a> TrustedDecoder<'a> {
     pub unsafe fn decode_resource_record_unchecked(&mut self) -> ResourceRecord<'a, WireFormat> {
         let name = self.decode_name_unchecked();
         let type_ = self.decode_type_unchecked();
-        let class = self.decode_class_unchecked();
+        let class = self.decode_rclass_unchecked();
         let ttl = Ttl(self.decode_u32_unchecked());
         let rdlength = self.decode_u16_unchecked();
         let rdata = self.decode_rdata_unchecked(class, type_, rdlength);
@@ -1110,7 +1111,7 @@ impl<'a> TrustedDecoder<'a> {
 mod tests {
     use super::*;
     use super::{QuestionSection, ResourceRecordSection, TrustedDecoder};
-    use {Class, Format, Name, Question, RData, ResourceRecord, Serial, Ttl, Type, class, qclass, qtype, std, type_};
+    use {Format, Name, Question, RClass, RData, ResourceRecord, Serial, Ttl, Type, qclass, qtype, rclass, std, type_};
     use format::MAX_NAME_LENGTH;
     use std::str::FromStr;
 
@@ -1401,12 +1402,12 @@ mod tests {
     }
 
     #[test]
-    fn encoder_class_at_ok() {
+    fn encoder_rclass_at_ok() {
         let mut b: [u8; 512] = [0; 512];
         let len = {
             let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
-            let got = e.encode_class_at(&mut cursor, class::IN);
+            let got = e.encode_rclass_at(&mut cursor, rclass::IN);
             let expected = Ok(());
             assert_eq!(got, expected);
             cursor
@@ -1419,12 +1420,12 @@ mod tests {
     }
 
     #[test]
-    fn encoder_class_at_nok() {
+    fn encoder_rclass_at_nok() {
         let mut b: [u8; 13] = [0; 13];
         let len = {
             let mut e = WireEncoder::<marker::Response, marker::QuestionSection>::new(&mut b).unwrap();
             let mut cursor = 12;
-            let got = e.encode_class_at(&mut cursor, class::IN);
+            let got = e.encode_rclass_at(&mut cursor, rclass::IN);
             let expected = Err(EncoderError);
             assert_eq!(got, expected);
             cursor
@@ -1871,7 +1872,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let mut cursor = 12;
@@ -1899,7 +1900,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Query, marker::QuestionSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let mut cursor = 12;
@@ -1945,7 +1946,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let got = e.encode_answer(&r);
@@ -1972,7 +1973,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AnswerSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::CNAME,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::CName { cname: TestName::new("bar.") });
             let got = e.encode_answer(&r);
@@ -1993,7 +1994,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::NS { nsdname: TestName::new("bar.") });
             let got = e.encode_authority(&r);
@@ -2020,7 +2021,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AuthoritySection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::NS,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::NS { nsdname: TestName::new("bar.") });
             let got = e.encode_authority(&r);
@@ -2041,7 +2042,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::A {
                                                           address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap(),
@@ -2070,7 +2071,7 @@ mod tests {
             let mut e = WireEncoder::<marker::Response, marker::AdditionalSection>::new(&mut b).unwrap();
             let r = ResourceRecord::<TestFormat>::new(TestName::new("foo."),
                                                       type_::A,
-                                                      class::IN,
+                                                      rclass::IN,
                                                       Ttl(1000),
                                                       RData::A {
                                                           address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap(),
@@ -2177,20 +2178,20 @@ mod tests {
     }
 
     #[test]
-    fn untrusted_decoder_class_ok() {
+    fn untrusted_decoder_rclass_ok() {
         let mut d = WireDecoder::new(b"\x00\x00\x01").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_class();
-        let expected = Ok(class::IN);
+        let got = d.decode_rclass();
+        let expected = Ok(rclass::IN);
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(std::mem::size_of::<u16>()));
     }
 
     #[test]
-    fn untrusted_decoder_class_nok_truncated() {
+    fn untrusted_decoder_rclass_nok_truncated() {
         let mut d = WireDecoder::new(b"\x00");
         let o = d.clone();
-        let got = d.decode_class();
+        let got = d.decode_rclass();
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2480,7 +2481,7 @@ mod tests {
     fn untrusted_decoder_rdata_other_ok() {
         let mut d = WireDecoder::new(b"\x00\x01\x02\x03").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(Class(255), Type(255), 3);
+        let got = d.decode_rdata(RClass(255), Type(255), 3);
         let expected = Ok(RData::Other { octets: &b"\x01\x02\x03"[..] });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(3));
@@ -2490,7 +2491,7 @@ mod tests {
     fn untrusted_decoder_rdata_other_nok_truncated() {
         let mut d = WireDecoder::new(b"\x00\x01\x02\x03").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(Class(255), Type(255), 4);
+        let got = d.decode_rdata(RClass(255), Type(255), 4);
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2500,7 +2501,7 @@ mod tests {
     fn untrusted_decoder_rdata_a_ok() {
         let mut d = WireDecoder::new(b"\x00\x01\x02\x03\x04").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::A, 4);
+        let got = d.decode_rdata(rclass::IN, type_::A, 4);
         let expected = Ok(RData::A { address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap() });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(4));
@@ -2510,7 +2511,7 @@ mod tests {
     fn untrusted_decoder_rdata_a_nok_address_truncated() {
         let mut d = WireDecoder::new(b"\x00\x0a\x00\x00").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::A, 4);
+        let got = d.decode_rdata(rclass::IN, type_::A, 4);
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2520,7 +2521,7 @@ mod tests {
     fn untrusted_decoder_rdata_a_nok_bad_rdlength() {
         let mut d = WireDecoder::new(b"\x00\x0a\x00\x00\x01").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::A, 3);
+        let got = d.decode_rdata(rclass::IN, type_::A, 3);
         let expected = Err(DecoderError::BadRdlength);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2530,7 +2531,7 @@ mod tests {
     fn untrusted_decoder_rdata_cname_ok() {
         let mut d = WireDecoder::new(b"\x00\x03foo\x00").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::CNAME, 5);
+        let got = d.decode_rdata(rclass::IN, type_::CNAME, 5);
         let expected = Ok(RData::CName { cname: WireName { decoder: unsafe { o.as_trusted() } } });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(5));
@@ -2540,7 +2541,7 @@ mod tests {
     fn untrusted_decoder_rdata_cname_nok_cname_truncated() {
         let mut d = WireDecoder::new(b"\x00\x03foo").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::CNAME, 4);
+        let got = d.decode_rdata(rclass::IN, type_::CNAME, 4);
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2550,7 +2551,7 @@ mod tests {
     fn untrusted_decoder_rdata_cname_nok_bad_rdlength() {
         let mut d = WireDecoder::new(b"\x00\x03foo\x00").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::CNAME, 4);
+        let got = d.decode_rdata(rclass::IN, type_::CNAME, 4);
         let expected = Err(DecoderError::BadRdlength);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2560,7 +2561,7 @@ mod tests {
     fn untrusted_decoder_rdata_ns_ok() {
         let mut d = WireDecoder::new(b"\x00\x03foo\x00").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::NS, 5);
+        let got = d.decode_rdata(rclass::IN, type_::NS, 5);
         let expected = Ok(RData::NS { nsdname: WireName { decoder: unsafe { o.as_trusted() } } });
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(5));
@@ -2570,7 +2571,7 @@ mod tests {
     fn untrusted_decoder_rdata_ns_nok_nsdname_truncated() {
         let mut d = WireDecoder::new(b"\x00\x03foo").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::NS, 4);
+        let got = d.decode_rdata(rclass::IN, type_::NS, 4);
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2580,7 +2581,7 @@ mod tests {
     fn untrusted_decoder_rdata_ns_nok_bad_rdlength() {
         let mut d = WireDecoder::new(b"\x00\x03foo\x00").with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::NS, 4);
+        let got = d.decode_rdata(rclass::IN, type_::NS, 4);
         let expected = Err(DecoderError::BadRdlength);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2598,7 +2599,7 @@ mod tests {
                                        \x11\x12\x13\x14")
                 .with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::SOA, 30);
+        let got = d.decode_rdata(rclass::IN, type_::SOA, 30);
         let expected = Ok(RData::SOA {
                               mname: WireName { decoder: unsafe { o.as_trusted() } },
                               rname: WireName { decoder: unsafe { o.with_cursor_offset(5).as_trusted() } },
@@ -2624,7 +2625,7 @@ mod tests {
                                        \x11\x12\x13\x14")
                 .with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::SOA, 30);
+        let got = d.decode_rdata(rclass::IN, type_::SOA, 30);
         let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2642,7 +2643,7 @@ mod tests {
                                        \x11\x12\x13\x14")
                 .with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::SOA, 30);
+        let got = d.decode_rdata(rclass::IN, type_::SOA, 30);
         let expected = Err(DecoderError::InvalidLabel);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2660,7 +2661,7 @@ mod tests {
                                        \x11\x12\x13")
                 .with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::SOA, 29);
+        let got = d.decode_rdata(rclass::IN, type_::SOA, 29);
         let expected = Err(DecoderError::UnexpectedEof);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2678,7 +2679,7 @@ mod tests {
                                        \x11\x12\x13\x14")
                 .with_cursor_offset(1);
         let o = d.clone();
-        let got = d.decode_rdata(class::IN, type_::SOA, 29);
+        let got = d.decode_rdata(rclass::IN, type_::SOA, 29);
         let expected = Err(DecoderError::BadRdlength);
         assert_eq!(got, expected);
         assert_eq!(d, o);
@@ -2841,11 +2842,11 @@ mod tests {
     }
 
     #[test]
-    fn trusted_decoder_class() {
+    fn trusted_decoder_rclass() {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x00\x01") }.with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_class_unchecked() };
-        let expected = class::IN;
+        let got = unsafe { d.decode_rclass_unchecked() };
+        let expected = rclass::IN;
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(std::mem::size_of::<u16>()));
     }
@@ -2950,7 +2951,7 @@ mod tests {
     fn trusted_decoder_rdata_other() {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x01\x02\x03") }.with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_rdata_unchecked(Class(255), Type(255), 3) };
+        let got = unsafe { d.decode_rdata_unchecked(RClass(255), Type(255), 3) };
         let expected = RData::Other { octets: &b"\x01\x02\x03"[..] };
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(3));
@@ -2960,7 +2961,7 @@ mod tests {
     fn trusted_decoder_rdata_a() {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x01\x02\x03\x04") }.with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_rdata_unchecked(class::IN, type_::A, 4) };
+        let got = unsafe { d.decode_rdata_unchecked(rclass::IN, type_::A, 4) };
         let expected = RData::A { address: std::net::Ipv4Addr::from_str("1.2.3.4").unwrap() };
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(4));
@@ -2970,7 +2971,7 @@ mod tests {
     fn trusted_decoder_rdata_cname() {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x03foo\x00") }.with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_rdata_unchecked(class::IN, type_::CNAME, 5) };
+        let got = unsafe { d.decode_rdata_unchecked(rclass::IN, type_::CNAME, 5) };
         let expected = RData::CName { cname: WireName { decoder: o.clone() } };
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(5));
@@ -2980,7 +2981,7 @@ mod tests {
     fn trusted_decoder_rdata_ns() {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x03foo\x00") }.with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_rdata_unchecked(class::IN, type_::NS, 5) };
+        let got = unsafe { d.decode_rdata_unchecked(rclass::IN, type_::NS, 5) };
         let expected = RData::NS { nsdname: WireName { decoder: o.clone() } };
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(5));
@@ -3014,7 +3015,7 @@ mod tests {
             }
             .with_cursor_offset(1);
         let o = d.clone();
-        let got = unsafe { d.decode_rdata_unchecked(class::IN, type_::SOA, 30) };
+        let got = unsafe { d.decode_rdata_unchecked(rclass::IN, type_::SOA, 30) };
         let expected = RData::SOA {
             mname: WireName { decoder: o.clone() },
             rname: WireName { decoder: o.clone().with_cursor_offset(5) },
@@ -3045,7 +3046,7 @@ mod tests {
         let expected =
             ResourceRecord::new(WireName { decoder: o.clone() },
                                 type_::CNAME,
-                                class::IN,
+                                rclass::IN,
                                 Ttl(1000),
                                 RData::CName { cname: WireName { decoder: o.clone().with_cursor_offset(15) } });
         assert_eq!(got, expected);
