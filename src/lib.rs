@@ -4,6 +4,7 @@
 mod class;
 mod error;
 mod format;
+mod name;
 mod serial;
 mod text;
 mod ttl;
@@ -13,7 +14,8 @@ pub mod server;
 
 pub use class::{QClass, RClass, qclass, rclass};
 pub use error::{Error, ErrorKind};
-pub use format::{Format, Name, Question, RData, ResourceRecord};
+pub use format::{Format, Question, RData, ResourceRecord};
+pub use name::Name;
 pub use serial::Serial;
 pub use text::TextName;
 pub use ttl::Ttl;

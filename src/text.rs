@@ -11,7 +11,7 @@ impl<'a> Format<'a> for TextFormat {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TextName {
-    inner: String,
+    inner: Vec<u8>,
 }
 
 impl TextName {
@@ -46,23 +46,15 @@ impl TextName {
             }
         }
 
-        debug_assert!(std::str::from_utf8(s).is_ok());
-        let s = unsafe { std::str::from_utf8_unchecked(s) };
-
-        Ok(TextName { inner: String::from(s) })
+        Ok(TextName { inner: Vec::from(s) })
     }
 }
 
 impl<'a> Name<'a> for TextName {
+    type Label = &'a [u8];
     type LabelIter = TextLabelIter<'a>;
     fn labels(&'a self) -> Self::LabelIter {
         TextLabelIter { remaining: Some(&self.inner) }
-    }
-}
-
-impl std::fmt::Display for TextName {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        self.inner.fmt(f)
     }
 }
 
@@ -75,16 +67,16 @@ impl std::str::FromStr for TextName {
 
 #[derive(Clone, Debug)]
 pub struct TextLabelIter<'a> {
-    remaining: Option<&'a str>,
+    remaining: Option<&'a [u8]>,
 }
 
 impl<'a> Iterator for TextLabelIter<'a> {
-    type Item = &'a str;
+    type Item = &'a [u8];
     fn next(&mut self) -> Option<Self::Item> {
         match self.remaining {
             None => None,
             Some(s) => {
-                let mut split = s.splitn(2, '.');
+                let mut split = s.splitn(2, |&c| c == b'.');
                 let item = split.next();
                 debug_assert!(item.is_some());
                 self.remaining = split.next();
@@ -110,7 +102,7 @@ mod tests {
         macro_rules! ok {
             ($source:expr) => {
                 match TextName::from_str(&$source) {
-                    Ok(ref got) if *got == TextName { inner: String::from($source) } => {}
+                    Ok(ref got) if *got == TextName { inner: Vec::from($source) } => {}
                     got @ _ => panic!("Got unexpected result: {:?}", got),
                 }
             }
@@ -168,12 +160,12 @@ mod tests {
     fn text_name_labels() {
 
         let n = TextName::from_str("example.com").unwrap();
-        let expected = vec!["example", "com"];
+        let expected: &[&[u8]] = &[b"example", b"com"];
         let got = n.labels().collect::<Vec<_>>();
         assert_eq!(got, expected);
 
         let n = TextName::from_str("example.com.").unwrap();
-        let expected = vec!["example", "com", ""];
+        let expected: &[&[u8]] = &[b"example", b"com", b""];
         let got = n.labels().collect::<Vec<_>>();
         assert_eq!(got, expected);
     }

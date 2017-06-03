@@ -11,16 +11,18 @@ New:
 
 Breaking changes:
 
-* Several renames:
-    * `class` → `rclass` (module).
-    * `Class` → `RClass`.
-    * `SerialNumber` → `Serial`.
-    * `type_` → `rtype` (module).
-    * `Type` → `RType`.
-* The iterator returned from the `Name::labels` trait method now yields
-  the empty string as the last item if the name is fully qualified
-  ([#11][issue_11]). Previously, the iterator made no distinction
-  between fully qualified domain names and relative domain names.
+* The `class` module is now named `rclass`.
+* The `Class` type is now named `RClass`.
+* The `type_` module is now named `rtype`.
+* The `Type` type is now named `RType`.
+* Domain name types now use raw binary (`&[u8]`) instead of UTF-8
+  strings (`&str`).
+* Domain name label iteration now yields the empty slice as the last
+  item if the name is fully qualified ([#11][issue_11]). Previously, the
+  iterator made no distinction between fully qualified domain names and
+  relative domain names.
+* The `Name` trait no longer requires the `std::fmt::Display` trait.
+* The `SerialNumber` type is now named `Serial`.
 * The addition operations for the `Serial` type now take a `u32`
   parameter instead of a `Serial`.
 

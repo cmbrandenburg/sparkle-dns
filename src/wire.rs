@@ -52,26 +52,13 @@ pub struct WireName<'a> {
 }
 
 impl<'a> Name<'a> for WireName<'a> {
+    type Label = &'a [u8];
     type LabelIter = WireLabelIter<'a>;
     fn labels(&'a self) -> Self::LabelIter {
         WireLabelIter {
             decoder: self.decoder.clone(),
             done: false,
         }
-    }
-}
-
-impl<'a> std::fmt::Display for WireName<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        self.labels()
-            .fold(String::new(), |mut a, b| {
-                a.push_str(b);
-                if !b.is_empty() {
-                    a.push('.');
-                }
-                a
-            })
-            .fmt(f)
     }
 }
 
@@ -82,7 +69,7 @@ pub struct WireLabelIter<'a> {
 }
 
 impl<'a> Iterator for WireLabelIter<'a> {
-    type Item = &'a str;
+    type Item = &'a [u8];
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
             None
@@ -91,7 +78,7 @@ impl<'a> Iterator for WireLabelIter<'a> {
                 Some(x) => Some(x),
                 None => {
                     self.done = true;
-                    Some("")
+                    Some(b"")
                 }
             }
         }
@@ -380,9 +367,10 @@ impl<'a, Q: marker::QueryOrResponse, S: marker::EncoderState> WireEncoder<'a, Q,
         // TODO: Compress the name, if possible.
         let mut w = *cursor;
         for label in name.labels() {
+            let label = label.as_ref();
             debug_assert!(label.len() < 64);
             self.encode_u8_at(&mut w, label.len() as u8)?;
-            self.encode_octets_at(&mut w, label.as_bytes())?;
+            self.encode_octets_at(&mut w, label)?;
         }
         *cursor = w;
         Ok(())
@@ -1031,7 +1019,7 @@ impl<'a> TrustedDecoder<'a> {
         QType(self.decode_u16_unchecked())
     }
 
-    pub unsafe fn decode_label_unchecked(&mut self) -> Option<&'a str> {
+    pub unsafe fn decode_label_unchecked(&mut self) -> Option<&'a [u8]> {
         loop {
             let len = self.decode_u8_unchecked();
             if 0b_1100_0000 == len & 0b_1100_0000 {
@@ -1041,7 +1029,7 @@ impl<'a> TrustedDecoder<'a> {
                 debug_assert_eq!(len & 0b_1100_0000, 0b_0000_0000);
                 return match len as usize {
                            0 => None,
-                           len @ _ => Some(std::str::from_utf8_unchecked(self.decode_octets_unchecked(len))),
+                           len @ _ => Some(self.decode_octets_unchecked(len)),
                        };
             }
         }
@@ -1122,7 +1110,7 @@ mod tests {
         type RawOctets = Vec<u8>;
     }
 
-    struct TestName(Vec<String>);
+    struct TestName(Vec<Vec<u8>>);
 
     impl TestName {
         fn new<S: Into<String>>(s: S) -> Self {
@@ -1130,11 +1118,15 @@ mod tests {
             if !s.ends_with('.') {
                 s.push('.');
             }
-            TestName(s.split('.').map(|x| String::from(x)).collect())
+            TestName(s.as_bytes()
+                         .split(|&c| c == b'.')
+                         .map(|x| Vec::from(x))
+                         .collect())
         }
     }
 
     impl<'a> Name<'a> for TestName {
+        type Label = &'a Vec<u8>;
         type LabelIter = TestLabelIter<'a>;
         fn labels(&'a self) -> Self::LabelIter {
             TestLabelIter { inner: self.0.iter() }
@@ -1148,26 +1140,17 @@ mod tests {
     }
 
     struct TestLabelIter<'a> {
-        inner: std::slice::Iter<'a, String>,
+        inner: std::slice::Iter<'a, Vec<u8>>,
     }
 
     impl<'a> Iterator for TestLabelIter<'a> {
-        type Item = &'a str;
+        type Item = &'a Vec<u8>;
         fn next(&mut self) -> Option<Self::Item> {
             match self.inner.next() {
                 None => None,
-                Some(x) => Some(&x),
+                Some(x) => Some(x),
             }
         }
-    }
-
-    #[test]
-    fn wire_name_display() {
-        let mut d = WireDecoder::new(b"\x03foo\x03bar\x00");
-        let n = d.decode_name().unwrap();
-        let got = format!("{}", n);
-        let expected = "foo.bar.";
-        assert_eq!(got, expected);
     }
 
     #[test]
@@ -2896,7 +2879,7 @@ mod tests {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x03foo") }.with_cursor_offset(1);
         let o = d.clone();
         let got = unsafe { d.decode_label_unchecked() };
-        let expected = Some("foo");
+        let expected = Some("foo".as_bytes());
         assert_eq!(got, expected);
         assert_eq!(d, o.with_cursor_offset(4));
     }
@@ -2906,7 +2889,7 @@ mod tests {
         let mut d = unsafe { TrustedDecoder::new(b"\x00\x03foo\x00\xc1") }.with_cursor_offset(6);
         let o = d.clone();
         let got = unsafe { d.decode_label_unchecked() };
-        let expected = Some("foo");
+        let expected = Some("foo".as_bytes());
         assert_eq!(got, expected);
         assert_eq!(d, TrustedDecoder { cursor: 5, ..o });
     }
