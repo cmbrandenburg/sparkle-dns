@@ -120,8 +120,7 @@ impl RClass {
     pub fn parse_text(s: &str) -> Result<Self, Error> {
         class_str_to_u16(s)
             .map(|x| RClass(x))
-            .ok_or(Error::new(ErrorKind::InvalidInput,
-                              "The CLASS value is invalid or supported"))
+            .ok_or(Error::from((ErrorKind::InvalidInput, "The CLASS value is invalid or supported")))
     }
 
     /// The `as_u16` method returns the CLASS as a `u16` type.
@@ -180,8 +179,7 @@ impl QClass {
     pub fn parse_text(s: &str) -> Result<Self, Error> {
         qclass_str_to_u16(s)
             .map(|x| QClass(x))
-            .ok_or(Error::new(ErrorKind::InvalidInput,
-                              "The QCLASS value is invalid or unsupported"))
+            .ok_or(Error::from((ErrorKind::InvalidInput, "The QCLASS value is invalid or unsupported")))
     }
 
     /// The `as_u16` method returns the QCLASS as a `u16` type.

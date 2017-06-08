@@ -18,6 +18,10 @@ impl TextName {
     pub fn parse_bytes<S>(s: S) -> Result<Self, Error>
         where S: AsRef<[u8]>
     {
+        fn make_text_name_parse_error() -> Error {
+            Error::from((ErrorKind::InvalidInput, "Invalid DNS name"))
+        }
+
         let s = s.as_ref();
 
         let len_without_trailing_dot = s.len() - if s.ends_with(b".") { 1 } else { 0 };
@@ -84,10 +88,6 @@ impl<'a> Iterator for TextLabelIter<'a> {
             }
         }
     }
-}
-
-fn make_text_name_parse_error() -> Error {
-    Error::new(ErrorKind::InvalidInput, "Invalid DNS name")
 }
 
 #[cfg(test)]

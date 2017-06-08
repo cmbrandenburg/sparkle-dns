@@ -147,8 +147,7 @@ impl RType {
     pub fn parse_text(s: &str) -> Result<Self, Error> {
         type_str_to_u16(s)
             .map(|x| RType(x))
-            .ok_or(Error::new(ErrorKind::InvalidInput,
-                              "The TYPE value is invalid or unsupported"))
+            .ok_or(Error::from((ErrorKind::InvalidInput, "The TYPE value is invalid or unsupported")))
     }
 
     /// The `as_u16` method returns the TYPE as a `u16` type.
@@ -207,8 +206,7 @@ impl QType {
     pub fn parse_text(s: &str) -> Result<Self, Error> {
         qtype_str_to_u16(s)
             .map(|x| QType(x))
-            .ok_or(Error::new(ErrorKind::InvalidInput,
-                              "The QTYPE value is invalid or unsupported"))
+            .ok_or(Error::from((ErrorKind::InvalidInput, "The QTYPE value is invalid or unsupported")))
     }
 
     /// The `as_u16` method returns the QTYPE as a `u16` type.
