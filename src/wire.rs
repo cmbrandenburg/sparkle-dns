@@ -52,7 +52,6 @@ pub struct WireName<'a> {
 }
 
 impl<'a> Name<'a> for WireName<'a> {
-    type Label = &'a [u8];
     type LabelIter = WireLabelIter<'a>;
     fn labels(&'a self) -> Self::LabelIter {
         WireLabelIter {
@@ -1133,10 +1132,12 @@ mod tests {
     }
 
     impl<'a> Name<'a> for TestName {
-        type Label = &'a Vec<u8>;
         type LabelIter = TestLabelIter<'a>;
         fn labels(&'a self) -> Self::LabelIter {
-            TestLabelIter { inner: self.0.iter() }
+            fn f(x: &Vec<u8>) -> &[u8] {
+                x.as_slice()
+            }
+            TestLabelIter { inner: self.0.iter().map(f as _) }
         }
     }
 
@@ -1147,11 +1148,11 @@ mod tests {
     }
 
     struct TestLabelIter<'a> {
-        inner: std::slice::Iter<'a, Vec<u8>>,
+        inner: std::iter::Map<std::slice::Iter<'a, Vec<u8>>, fn(&'a Vec<u8>) -> &'a [u8]>,
     }
 
     impl<'a> Iterator for TestLabelIter<'a> {
-        type Item = &'a Vec<u8>;
+        type Item = &'a [u8];
         fn next(&mut self) -> Option<Self::Item> {
             match self.inner.next() {
                 None => None,

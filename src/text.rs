@@ -56,7 +56,6 @@ impl TextName {
 }
 
 impl<'a> Name<'a> for TextName {
-    type Label = &'a [u8];
     type LabelIter = TextLabelIter<'a>;
     fn labels(&'a self) -> Self::LabelIter {
         TextLabelIter { remaining: Some(&self.inner) }

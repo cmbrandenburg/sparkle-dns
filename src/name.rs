@@ -1,14 +1,12 @@
-/// Encapsulates a domain name.
+/// `Name` represents a domain name.
 pub trait Name<'a> {
-    type Label: AsRef<[u8]>;
-    type LabelIter: Iterator<Item = Self::Label>;
+    type LabelIter: Iterator<Item = &'a [u8]>;
 
-    /// Returns an iterator that yields each label in the name as a separate
-    /// string.
+    /// Returns an iterator that yields each label in the domain name.
     ///
-    /// If the name is fully qualified, then the iterator yields the empty
-    /// string as its last item. Otherwise, the iterator yields only nonempty
-    /// strings.
+    /// If the domain name is fully qualified—i.e., ends with a dot (`.`)—then
+    /// the returned iterator yields an empty slice as its last item. Otherwise,
+    /// the iterator yields only nonempty slices.
     ///
     fn labels(&'a self) -> Self::LabelIter;
 }
