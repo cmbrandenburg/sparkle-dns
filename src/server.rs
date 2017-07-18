@@ -43,10 +43,11 @@ impl std::fmt::Display for ServerError {
 ///
 pub trait Handler {
     type Error: std::error::Error;
-    fn handle_query<'a>(&self,
-                        query: &WireMessage,
-                        encoder: WireEncoder<'a, wire::marker::Response, wire::marker::AnswerSection>)
-                        -> WireEncoder<'a, wire::marker::Response, wire::marker::Done>;
+    fn handle_query<'a>(
+        &self,
+        query: &WireMessage,
+        encoder: WireEncoder<'a, wire::marker::Response, wire::marker::AnswerSection>,
+    ) -> WireEncoder<'a, wire::marker::Response, wire::marker::Done>;
 }
 
 /// Manages all networking of a DNS server.
@@ -60,17 +61,16 @@ impl<'a, H: Handler> Server<'a, H> {
     pub fn new(h: &'a H) -> Result<Self, ServerError> {
         // TODO: Support options for binding to other ports.
         let addr = "0.0.0.0:53";
-        let socket = UdpSocket::bind(addr)
-            .map_err(|e| {
-                         ServerError::Io {
-                             inner: e,
-                             what: format!("Failed to bind UDP socket to {}", addr),
-                         }
-                     })?;
+        let socket = UdpSocket::bind(addr).map_err(|e| {
+            ServerError::Io {
+                inner: e,
+                what: format!("Failed to bind UDP socket to {}", addr),
+            }
+        })?;
         Ok(Server {
-               socket: Arc::new(socket),
-               handler: h,
-           })
+            socket: Arc::new(socket),
+            handler: h,
+        })
     }
 
     pub fn serve(self) -> Result<(), ServerError> {
@@ -78,14 +78,12 @@ impl<'a, H: Handler> Server<'a, H> {
         let mut ibuffer: [u8; MAX_UDP_MESSAGE_LEN] = [0; MAX_UDP_MESSAGE_LEN];
         // println!("Server is listening");
         loop {
-            let (recv_len, peer_addr) = self.socket
-                .recv_from(&mut ibuffer)
-                .map_err(|e| {
-                             ServerError::Io {
-                                 inner: e,
-                                 what: String::from("Failed to receive from UDP socket"),
-                             }
-                         })?;
+            let (recv_len, peer_addr) = self.socket.recv_from(&mut ibuffer).map_err(|e| {
+                ServerError::Io {
+                    inner: e,
+                    what: String::from("Failed to receive from UDP socket"),
+                }
+            })?;
             let ipayload = &ibuffer[..recv_len];
 
             let mut decoder = WireDecoder::new(ipayload);
@@ -111,10 +109,12 @@ impl<'a, H: Handler> Server<'a, H> {
             match self.socket.send_to(opayload, peer_addr) {
                 Ok(send_len) => {
                     if send_len != opayload.len() {
-                        println!("Sent unexpected number of bytes on UDP socket: Expected to send {}, actually sent \
+                        println!(
+                            "Sent unexpected number of bytes on UDP socket: Expected to send {}, actually sent \
                                   {}",
-                                 opayload.len(),
-                                 send_len);
+                            opayload.len(),
+                            send_len
+                        );
                     }
                 }
                 Err(e) => {

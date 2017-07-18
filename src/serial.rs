@@ -156,18 +156,24 @@ mod tests {
     }
 
     tc!(partial_cmp_0_eq_0, 0, 0, eq);
-    tc!(partial_cmp_7fff_ffff_eq_7fff_ffff,
+    tc!(
+        partial_cmp_7fff_ffff_eq_7fff_ffff,
         0x7fff_ffff,
         0x7fff_ffff,
-        eq);
-    tc!(partial_cmp_8000_0000_eq_8000_8000,
+        eq
+    );
+    tc!(
+        partial_cmp_8000_0000_eq_8000_8000,
         0x8000_0000,
         0x8000_0000,
-        eq);
-    tc!(partial_cmp_ffff_ffff_eq_ffff_ffff,
+        eq
+    );
+    tc!(
+        partial_cmp_ffff_ffff_eq_ffff_ffff,
         0xffff_ffff,
         0xffff_ffff,
-        eq);
+        eq
+    );
 
     tc!(partial_cmp_0_lt_1, 0, 1, lt);
     tc!(partial_cmp_0_lt_42, 0, 42, lt);
@@ -180,18 +186,24 @@ mod tests {
     tc!(partial_cmp_1_xx_8000_0001, 1, 0x8000_0001, none);
     tc!(partial_cmp_1_gt_8000_0002, 0x8000_0002, 1, lt);
 
-    tc!(partial_cmp_4000_0000_lt_bfff_ffff,
+    tc!(
+        partial_cmp_4000_0000_lt_bfff_ffff,
         0x4000_0000,
         0xbfff_ffff,
-        lt);
-    tc!(partial_cmp_4000_0000_xx_c000_0000,
+        lt
+    );
+    tc!(
+        partial_cmp_4000_0000_xx_c000_0000,
         0x4000_0000,
         0xc000_0000,
-        none);
-    tc!(partial_cmp_4000_0000_xx_c000_0001,
+        none
+    );
+    tc!(
+        partial_cmp_4000_0000_xx_c000_0001,
         0xc000_0001,
         0x4000_0000,
-        lt);
+        lt
+    );
 
     macro_rules! tc {
         ($test_name:ident, $lhs:expr, $rhs:expr, $expected:expr) => {
@@ -216,8 +228,10 @@ mod tests {
     tc!(add_0_and_7fff_ffff, 0, 0x7fff_ffff, 0x7fff_ffff);
     tc!(add_ffff_ffff_and_1, 0xffff_ffff, 1, 0);
     tc!(add_ffff_ffff_and_2, 0xffff_ffff, 2, 1);
-    tc!(add_ffff_ffff_and_7fff_ffff,
+    tc!(
+        add_ffff_ffff_and_7fff_ffff,
         0xffff_ffff,
         0x7fff_ffff,
-        0x7fff_fffe);
+        0x7fff_fffe
+    );
 }

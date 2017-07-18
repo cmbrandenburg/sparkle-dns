@@ -16,7 +16,8 @@ pub struct TextName {
 
 impl TextName {
     pub fn parse_bytes<S>(s: S) -> Result<Self, Error>
-        where S: AsRef<[u8]>
+    where
+        S: AsRef<[u8]>,
     {
         fn make_text_name_parse_error() -> Error {
             Error::from((ErrorKind::InvalidInput, "Invalid DNS name"))

@@ -145,9 +145,10 @@ impl RType {
     /// The `parse_text` method converts a TYPE text mnemonic to its numeric
     /// value, if the mnemonic is known.
     pub fn parse_text(s: &str) -> Result<Self, Error> {
-        type_str_to_u16(s)
-            .map(|x| RType(x))
-            .ok_or(Error::from((ErrorKind::InvalidInput, "The TYPE value is invalid or unsupported")))
+        type_str_to_u16(s).map(|x| RType(x)).ok_or(Error::from((
+            ErrorKind::InvalidInput,
+            "The TYPE value is invalid or unsupported",
+        )))
     }
 
     /// The `as_u16` method returns the TYPE as a `u16` type.
@@ -204,9 +205,10 @@ impl QType {
     /// The `parse_text` method converts a QTYPE text mnemonic to its numeric
     /// value, if the mnemonic is known.
     pub fn parse_text(s: &str) -> Result<Self, Error> {
-        qtype_str_to_u16(s)
-            .map(|x| QType(x))
-            .ok_or(Error::from((ErrorKind::InvalidInput, "The QTYPE value is invalid or unsupported")))
+        qtype_str_to_u16(s).map(|x| QType(x)).ok_or(Error::from((
+            ErrorKind::InvalidInput,
+            "The QTYPE value is invalid or unsupported",
+        )))
     }
 
     /// The `as_u16` method returns the QTYPE as a `u16` type.

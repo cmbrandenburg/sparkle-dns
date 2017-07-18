@@ -49,12 +49,13 @@ pub struct ResourceRecord<'a, F: Format<'a>> {
 }
 
 impl<'a, F: Format<'a>> ResourceRecord<'a, F> {
-    pub fn new<N: Into<F::Name>, IntoT: Into<Ttl>, R: Into<RData<'a, F>>>(name: N,
-                                                                          rtype: RType,
-                                                                          rclass: RClass,
-                                                                          ttl: IntoT,
-                                                                          rdata: R)
-                                                                          -> Self {
+    pub fn new<N: Into<F::Name>, IntoT: Into<Ttl>, R: Into<RData<'a, F>>>(
+        name: N,
+        rtype: RType,
+        rclass: RClass,
+        ttl: IntoT,
+        rdata: R,
+    ) -> Self {
         ResourceRecord {
             name: name.into(),
             rtype: rtype,
@@ -128,9 +129,10 @@ pub fn is_hostname_valid(s: &[u8]) -> bool {
         return false;
     }
 
-    if !s.iter()
-            .map(|&b| b as char)
-            .all(|c| c.is_alphanumeric() || c == '-') {
+    if !s.iter().map(|&b| b as char).all(|c| {
+        c.is_alphanumeric() || c == '-'
+    })
+    {
         return false;
     }
 
@@ -157,8 +159,12 @@ mod tests {
         assert!(f("alpha-bravo17"));
 
         assert!(!f(""));
-        assert!(f("the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-x"));
-        assert!(!f("the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-xx"));
+        assert!(f(
+            "the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-x",
+        ));
+        assert!(!f(
+            "the-longest-allowed-hostname-is-63-octets-xxxx-xxxx-xxxx-xxxx-xx",
+        ));
 
         assert!(f("7"));
         assert!(f("17"));
