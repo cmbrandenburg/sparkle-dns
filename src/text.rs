@@ -1,4 +1,4 @@
-use {Error, ErrorKind, Format, Name, format, std};
+use {Error, Format, Name, format, std};
 use format::MAX_NAME_LENGTH;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -20,7 +20,7 @@ impl TextName {
         S: AsRef<[u8]>,
     {
         fn make_text_name_parse_error() -> Error {
-            Error::from((ErrorKind::InvalidInput, "Invalid DNS name"))
+            Error::new("Invalid DNS name").tag_as_bad_input().into()
         }
 
         let s = s.as_ref();
@@ -94,7 +94,6 @@ impl<'a> Iterator for TextLabelIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ErrorKind;
     use std::str::FromStr;
 
     #[test]
@@ -112,7 +111,7 @@ mod tests {
         macro_rules! nok {
             ($source:expr) => {
                 match TextName::from_str(&$source) {
-                    Err(ref e) if e.kind() == ErrorKind::InvalidInput => {}
+                    Err(ref e) if e.is_because_bad_input() => {}
                     got @ _ => panic!("Got unexpected result: {:?}", got),
                 }
             }

@@ -13,7 +13,7 @@ mod wire;
 pub mod server;
 
 pub use class::{QClass, RClass, qclass, rclass};
-pub use error::{Error, ErrorKind};
+pub use error::Error;
 pub use format::{Format, Question, RData, ResourceRecord};
 pub use name::Name;
 pub use serial::Serial;

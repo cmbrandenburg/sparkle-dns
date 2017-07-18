@@ -1,4 +1,4 @@
-use {Error, ErrorKind, std};
+use {Error, std};
 use std::ascii::AsciiExt;
 
 macro_rules! class_table {
@@ -118,10 +118,11 @@ impl RClass {
     /// The `parse_text` method converts a CLASS text mnemonic to its numeric
     /// value, if the mnemonic is known.
     pub fn parse_text(s: &str) -> Result<Self, Error> {
-        class_str_to_u16(s).map(|x| RClass(x)).ok_or(Error::from((
-            ErrorKind::InvalidInput,
-            "The CLASS value is invalid or supported",
-        )))
+        class_str_to_u16(s).map(|x| RClass(x)).ok_or(
+            Error::new("The CLASS value is invalid or supported")
+                .tag_as_bad_input()
+                .into(),
+        )
     }
 
     /// The `as_u16` method returns the CLASS as a `u16` type.
@@ -178,10 +179,11 @@ impl QClass {
     /// The `parse_text` method converts a QCLASS text mnemonic to its numeric
     /// value, if the mnemonic is known.
     pub fn parse_text(s: &str) -> Result<Self, Error> {
-        qclass_str_to_u16(s).map(|x| QClass(x)).ok_or(Error::from((
-            ErrorKind::InvalidInput,
-            "The QCLASS value is invalid or unsupported",
-        )))
+        qclass_str_to_u16(s).map(|x| QClass(x)).ok_or(
+            Error::new("The QCLASS value is invalid or unsupported")
+                .tag_as_bad_input()
+                .into(),
+        )
     }
 
     /// The `as_u16` method returns the QCLASS as a `u16` type.
