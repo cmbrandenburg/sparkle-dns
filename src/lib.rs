@@ -1,17 +1,21 @@
 //! Sparkle is a DNS server framework, useful for writing DNS server
 //! applications that do dynamic per-request processing.
 
+mod buf_name;
 mod class;
 mod error;
 mod format;
 mod name;
 mod serial;
+mod testing;
 mod text;
 mod ttl;
 mod typ;
 mod wire;
+
 pub mod server;
 
+pub use buf_name::BufName;
 pub use class::{QClass, RClass, qclass, rclass};
 pub use error::Error;
 pub use format::{Format, Question, RData, ResourceRecord};

@@ -75,75 +75,12 @@ impl From<ErrorBuilder> for Error {
     }
 }
 
-/*
-// We implement From<'static str> and From<String> separately so that we don't
-// conflict with From<std::io::Error>.
-
-impl From<&'static str> for Error {
-    fn from(reason: &'static str) -> Error {
-        Error {
-            kind: ErrorKind::Unspecified,
-            reason: Cow::Borrowed(reason),
-            cause: None,
-        }
-    }
-}
-
-impl From<String> for Error {
-    fn from(reason: String) -> Error {
-        Error {
-            kind: ErrorKind::Unspecified,
-            reason: Cow::Owned(reason),
-            cause: None,
-        }
-    }
-}
-
-impl<R> From<(ErrorKind, R)> for Error
-    where R: Into<Cow<'static, str>>
-{
-    fn from((kind, reason): (ErrorKind, R)) -> Error {
-        Error {
-            kind: kind,
-            reason: reason.into(),
-            cause: None,
-        }
-    }
-}
-
-impl<E, R> From<(R, E)> for Error
-    where E: Into<Box<std::error::Error>>,
-          R: Into<Cow<'static, str>>
-{
-    fn from((reason, cause): (R, E)) -> Error {
-        Error {
-            kind: ErrorKind::Unspecified,
-            reason: reason.into(),
-            cause: Some(cause.into()),
-        }
-    }
-}
-
-impl<E, R> From<(ErrorKind, R, E)> for Error
-    where E: Into<Box<std::error::Error>>,
-          R: Into<Cow<'static, str>>
-{
-    fn from((kind, reason, cause): (ErrorKind, R, E)) -> Error {
-        Error {
-            kind: kind,
-            reason: reason.into(),
-            cause: Some(cause.into()),
-        }
-    }
-}
-
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
         Error {
-            kind: ErrorKind::Unspecified,
             reason: Cow::Borrowed("An I/O error occurred"),
             cause: Some(Box::new(e)),
+            tagged_as_bad_input: false,
         }
     }
 }
-*/
